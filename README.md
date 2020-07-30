@@ -4,7 +4,7 @@ The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the f
 
 # Installation for Mac and Windows
 
-After cloning the project, get the latest librairies from https://github.com/labstreaminglayer/liblsl-Matlab/releases/ (note that some releases only have Windows files while others have both Mac and Windows file). This project was successfully run with liblsl-Matlab-lsl1_14-MatlabR2020a-Win64-VS2017.zip (Windows) and liblsl1_13_0_b13-MatlabR2019a-MacOS10_14.zip (MacOS).
+After cloning the project, get the latest LSL Matlab librairies from https://github.com/labstreaminglayer/liblsl-Matlab/releases/ (note that some releases only have Windows files while others have both Mac and Windows file). This project was successfully run with liblsl-Matlab-lsl1_14-MatlabR2020a-Win64-VS2017.zip (Windows) and liblsl1_13_0_b13-MatlabR2019a-MacOS10_14.zip (MacOS).
 
 The folder should be name "liblsl-Matlab" (if it is not rename it). Some releases of liblsl-Matlab do not contain "bin" subfolders and should be avoided.
 
