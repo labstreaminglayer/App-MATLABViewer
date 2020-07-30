@@ -132,7 +132,7 @@ end
             % extract channels/samples to plot
             samples_to_get = min(size(stream.buffer,2), round(stream.srate*opts.timerange));
             channels_to_get = intersect(opts.channelrange + opts.pageoffset*length(opts.channelrange), 1:size(stream.buffer,1));
-            stream.data = stream.buffer(channels_to_get,1+round(mod(stream.nsamples-samples_to_get: stream.srate/opts.samplingrate : stream.nsamples-1,size(stream.buffer,2))));
+            stream.data = stream.buffer(channels_to_get,1+floor(mod(stream.nsamples-samples_to_get: stream.srate/opts.samplingrate : stream.nsamples-1,size(stream.buffer,2))));
             [stream.nbchan,stream.pnts,stream.trials] = size(stream.data);
             stream.xmax = max(timestamps) - lsl_local_clock(lib);
             stream.xmin = stream.xmax - (samples_to_get-1)/stream.srate;
@@ -230,6 +230,7 @@ function [fig,ax,lines] = create_figure(opts,on_key,on_close)
         if isempty(opts.parent_fig)
             fig = figure('Name',['LSL:Stream''' opts.streamname ''''], 'CloseRequestFcn',on_close, ...
                 'KeyPressFcn',@(varargin)on_key(varargin{2}.Key));
+            %fig = figure('Name',['LSL:Stream''' opts.streamname '''']);
         else
             fig = opts.parent_fig;
         end
