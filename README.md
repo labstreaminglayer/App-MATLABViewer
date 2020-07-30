@@ -2,7 +2,7 @@
 
 The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the full LSL distribution. It allows you to view the signal content of any stream on your lab network in real time. There is also an alternative viewer available that is written in C++ and does not require MATLAB (the StreamViewer).
 
-# Installation Mac and Windows
+# Installation for Mac and Windows
 
 After cloning the project, get the latest librairies from https://github.com/labstreaminglayer/liblsl-Matlab/releases/ (note that some releases only have Windows files while others have both Mac and Windows file). This project was successfully run with liblsl-Matlab-lsl1_14-MatlabR2020a-Win64-VS2017.zip (Windows) and liblsl1_13_0_b13-MatlabR2019a-MacOS10_14.zip (MacOS).
 
