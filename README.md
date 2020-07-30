@@ -50,13 +50,13 @@ Since the function can be scripted via the command line, one can make a script t
 The MATLAB function is relatively simple and so can be customized quite easily.
 
 # Compilation notes for Windows and OSX
-Make sure the program runs from the Matlab command line. You need to do that for all sessions as it adds important paths.
+Make sure the program runs from the Matlab command line. You need to do that for all Matlab sessions as it adds important paths.
 
 Invoke the Matlab Compiler App. Click on the "App" tab and select "Application compiler." If this is not available for you, it means that you do not have the Matlab compiler installed.
 
-Add the function vis_stream_com.m (this function calls vis_stream.m but allows to set parameters on the command line of the compiled application). Manually add the library "liblsl-Matlab/bin/lsl.dll" (Windows) or sometimes "liblsl-Matlab/bin/lsl64.dll." For Mac the file to add is named for "liblsl-Matlab/bin/liblsl64.dylib" (note that when the zip file of liblsl-Matlab is uncompressed, this file may actually be a symbolic link to "liblsl64.1.13.0.dylib" (for example) and cannot be used for compilation purpose. If this is the case, simply copy liblsl64.1.13.0.dylib onto liblsl64.dylib. Compilation for Ubuntu has not been attempted but there is no reason it should not work.
+Add the function vis_stream_com.m (this function calls vis_stream.m but allows to set parameters on the command line for the compiled application). Manually add the library "liblsl-Matlab/bin/lsl.dll" (Windows) or sometimes "liblsl-Matlab/bin/lsl64.dll" depending on the liblsl-Matlab release. For Mac the file to add is named "liblsl-Matlab/bin/liblsl64.dylib" -- note that when the zip file of liblsl-Matlab is uncompressed, this file may actually be a symbolic link to "liblsl64.1.13.0.dylib" and cannot be used for compilation purpose. If this is the case, simply remove the symbolic link, and copy liblsl64.1.13.0.dylib onto liblsl64.dylib. Compilation for Ubuntu has not been attempted but there is no reason it should not work.
 
-Press package. Test using the executable in "for_testing" folder. 
+Press package. Test using the executable in "for_testing" folder. For example test using "vis_stream_comp.exe timerange 5" (setting a parameter bypasses the parameter GUI that sometimes create problems).
 
 # Caveats
 Currently, marker streams are not being displayed, and streams with irregular sampling rate will not have the correct time axis.
