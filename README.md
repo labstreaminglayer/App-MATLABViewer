@@ -2,11 +2,11 @@
 
 The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the full LSL distribution. It allows you to view the signal content of any stream on your lab network in real time. There is also an alternative viewer available that is written in C++ and does not require MATLAB (the StreamViewer).
 
-# Installation Mac and Windows
+# Installation for Mac and Windows
 
-After cloning the project, get the latest librairies from https://github.com/labstreaminglayer/liblsl-Matlab/releases/ (note that some releases only have Windows files while others have both Mac and Windows file). This project was successfully run with liblsl-Matlab-lsl1_14-MatlabR2020a-Win64-VS2017.zip (Windows) and liblsl1_13_0_b13-MatlabR2019a-MacOS10_14.zip (MacOS).
+After cloning the project, get the latest LSL Matlab librairies from https://github.com/labstreaminglayer/liblsl-Matlab/releases/ (note that some releases only have Windows files while others have both Mac and Windows file). This project was successfully run with liblsl-Matlab-lsl1_14-MatlabR2020a-Win64-VS2017.zip (Windows) and liblsl1_13_0_b13-MatlabR2019a-MacOS10_14.zip (MacOS).
 
-The folder should be name "liblsl-Matlab" (if it is not rename it). Some releases of liblsl-Matlab do not contain "bin" subfolders and should be avoided.
+The folder should be name "liblsl-Matlab" (if it is not rename it) and should be placed inside this project (the path will then be automatically detected). Some releases of liblsl-Matlab do not contain a "bin" subfolders and should be avoided. The Matlab version that was used to compile "liblsl-Matlab" is not important and you may use different versions of Matlab to run the Matlab viewer.
 
 # Usage
 
@@ -50,13 +50,13 @@ Since the function can be scripted via the command line, one can make a script t
 The MATLAB function is relatively simple and so can be customized quite easily.
 
 # Compilation notes for Windows and OSX
-Make sure the program runs from the Matlab command line. You need to do that for all sessions as it adds important paths.
+Make sure the program runs from the Matlab command line. You need to do that for all Matlab sessions as it adds important paths.
 
 Invoke the Matlab Compiler App. Click on the "App" tab and select "Application compiler." If this is not available for you, it means that you do not have the Matlab compiler installed.
 
-Add the function vis_stream_com.m (this function calls vis_stream.m but allows to set parameters on the command line of the compiled application). Manually add the library "liblsl-Matlab/bin/lsl.dll" (Windows) or sometimes "liblsl-Matlab/bin/lsl64.dll." For Mac the file to add is named for "liblsl-Matlab/bin/liblsl64.dylib" (note that when the zip file of liblsl-Matlab is uncompressed, this file may actually be a symbolic link to "liblsl64.1.13.0.dylib" (for example) and cannot be used for compilation purpose. If this is the case, simply copy liblsl64.1.13.0.dylib onto liblsl64.dylib. Compilation for Ubuntu has not been attempted but there is no reason it should not work.
+Add the function vis_stream_com.m (this function calls vis_stream.m but allows to set parameters on the command line for the compiled application). Manually add the library "liblsl-Matlab/bin/lsl.dll" (Windows) or sometimes "liblsl-Matlab/bin/lsl64.dll" depending on the liblsl-Matlab release. For Mac the file to add is named "liblsl-Matlab/bin/liblsl64.dylib" -- note that when the zip file of liblsl-Matlab is uncompressed, this file may actually be a symbolic link to "liblsl64.1.13.0.dylib" and cannot be used for compilation purpose. If this is the case, simply remove the symbolic link, and copy liblsl64.1.13.0.dylib onto liblsl64.dylib. Compilation for Ubuntu has not been attempted but there is no reason it should not work.
 
-Press package. Test using the executable in "for_testing" folder. 
+Press package. Test using the executable in "for_testing" folder. For example test using "vis_stream_comp.exe timerange 5" (setting a parameter bypasses the parameter GUI that sometimes create problems).
 
 # Caveats
 Currently, marker streams are not being displayed, and streams with irregular sampling rate will not have the correct time axis.
