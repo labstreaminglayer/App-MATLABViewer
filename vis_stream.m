@@ -86,6 +86,7 @@ opts = arg_define(varargin, ...
     arg({'freqfilter','FrequencyFilter','moving_avg','MovingAverageLength'},0,[0 Inf],'Frequency filter. The parameters of a bandpass filter [raise-start,raise-stop,fall-start,fall-stop], e.g., [7 8 14 15] for a filter with 8-14 Hz pass-band and 1 Hz transition bandwidth between passband and stop-bands; if given as a single scalar, a moving-average filter is designed (legacy option).'), ...
     arg({'reref','Rereference'},false,[],'Common average reference. Enable this to view the data with a common average reference filter applied.'), ...
     arg({'standardize','Standardize'},false,[],'Standardize data.'), ...
+    arg({'rms','RMS'},true,[],'Show RMS for each channel.'), ...
     arg({'zeromean','ZeroMean'},true,[],'Zero-mean data.'), ...
     arg_nogui({'parent_fig','ParentFigure'},[],[],'Parent figure handle.'), ...
     arg_nogui({'parent_ax','ParentAxes'},[],[],'Parent axis handle.'), ...    
@@ -96,7 +97,7 @@ if ~isempty(varargin)
     % create stream inlet, figure and stream buffer
     inlet = create_inlet(lib,opts);
     stream = create_streambuffer(opts,inlet.info());    
-    [fig,ax,lines] = create_figure(opts,@on_key,@on_close);
+    [fig,axrms,ax,lines] = create_figure(opts,@on_key,@on_close);
     % optionally design a frequency filter
     if length(opts.freqfilter) == 4
         B = design_bandpass(opts.freqfilter,stream.srate,20,true);
@@ -151,7 +152,7 @@ end
             plottime = linspace(stream.xmin,stream.xmax,stream.pnts);
             
             % update graphics
-            if isempty(lines)                        
+            if isempty(lines)    
                 lines = plot(ax,plottime,plotdata);
                 title(ax,opts.streamname);
                 xlabel(ax,'Time (sec)','FontSize',12);
@@ -164,9 +165,19 @@ end
             end
             
             % update the axis limit and tickmarks
-            axis(ax,[stream.xmin stream.xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
+            axis(ax   ,[stream.xmin stream.xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
             set(ax, 'YTick',plotoffsets, 'YTickLabel',{stream.chanlocs(channels_to_get).labels});
             
+            % compute RMS and show it
+            if opts.rms
+                axis(axrms,[stream.xmin stream.xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
+                rms = sqrt(mean(bsxfun(@minus, plotdata, mean(plotdata,2)).^2,2));
+                rmsStr = {};
+                for iRms = 1:length(rms)
+                    rmsStr{iRms} = sprintf('%2.1f uVrms', rms(iRms));
+                end
+                set(axrms, 'YTick',plotoffsets, 'YTickLabel',rmsStr);
+            end
             drawnow;
         catch e
             % display error message
@@ -225,7 +236,8 @@ function names = find_streams(lib)
 end
 
 % create a new figure and axes
-function [fig,ax,lines] = create_figure(opts,on_key,on_close)
+function [fig,axrms,ax,lines] = create_figure(opts,on_key,on_close)
+    axrms = [];
     if isempty(opts.parent_ax)
         if isempty(opts.parent_fig)
             fig = figure('Name',['LSL:Stream''' opts.streamname ''''], 'CloseRequestFcn',on_close, ...
@@ -234,7 +246,12 @@ function [fig,ax,lines] = create_figure(opts,on_key,on_close)
         else
             fig = opts.parent_fig;
         end
-        ax = axes('Parent',fig, 'YDir','reverse');
+        if opts.rms
+            axrms = axes('Parent',fig, 'YAxisLocation', 'right', 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150]);
+            ax    = axes('Parent',fig, 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150]);
+        else
+            ax    = axes('Parent',fig, 'YDir','normal');
+        end
     else
         ax = opts.parent_ax;
     end       
