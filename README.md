@@ -58,6 +58,10 @@ Add the function vis_stream_com.m (this function calls vis_stream.m but allows t
 
 Press package. Test using the executable in "for_testing" folder. For example test using "vis_stream_comp.exe timerange 5" (setting a parameter bypasses the parameter GUI that sometimes create problems).
 
+# EEGLAB plugin release
+
+Check out the project. Install LSL for Mac and test. Unzip LSL for windows and copy the Mex and DLL files into the bin folder of the LSL Mac version. Rename lsl.dll to liblsl64.dll, and test. Zip and release.
+
 # Caveats
 Currently, marker streams are not being displayed, and streams with irregular sampling rate will not have the correct time axis.
 
