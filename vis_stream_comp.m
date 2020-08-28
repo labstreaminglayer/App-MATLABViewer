@@ -32,7 +32,7 @@ else
     opt = struct([]);
 end
     
-numFields  = { 'bufferrange' 'timerange' 'channelrange' 'samplingrate' 'refreshrate' 'freqfilter' 'position' 'reref' 'standardize' 'zeromean' };
+numFields  = { 'bufferrange' 'timerange' 'channelrange' 'samplingrate' 'refreshrate' 'freqfilter' 'position' 'reref' 'standardize' 'zeromean' 'recordbut' };
 
 for iField = 1:length(numFields)
     if isfield(opt, numFields{iField}) && ischar(opt.(numFields{iField})) 

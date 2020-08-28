@@ -65,7 +65,8 @@ function vis_stream(varargin)
 
 
 % make sure that dependencies are on the path and that LSL is loaded
-if ~exist('arg_define','file')
+evalin('base', 'global EEG;');
+if ~exist('lsl_loadlib','file')
     addpath(genpath(fileparts(mfilename('fullpath')))); end
 try
     lib = lsl_loadlib(env_translatepath('dependencies:/liblsl-Matlab/bin'));
@@ -75,6 +76,17 @@ end
 
 % handle input arguments
 streamnames = find_streams(lib);
+
+if isempty(streamnames)
+    if isempty(varargin)
+        errordlg('There is no stream visible on the network.'); 
+        return
+    else
+        error('There is no stream visible on the network.'); 
+    end
+end
+
+    % arg({'notchfilter','NotchFilter'},0,[0 Inf],'Notch filter. Enter 50 or 60 based on line noise frequency in your country.'), ...
 opts = arg_define(varargin, ...
     arg({'streamname','StreamName'},streamnames{1},streamnames,'LSL stream that should be displayed. The name of the stream that you would like to display.'), ...
     arg({'bufferrange','BufferRange'},10,[0 Inf],'Maximum time range to buffer. Imposes an upper limit on what can be displayed.'), ...
@@ -88,6 +100,7 @@ opts = arg_define(varargin, ...
     arg({'standardize','Standardize'},false,[],'Standardize data.'), ...
     arg({'rms','RMS'},true,[],'Show RMS for each channel.'), ...
     arg({'zeromean','ZeroMean'},true,[],'Zero-mean data.'), ...
+    arg({'recordbut','RecordButton'},true,[],'Show Record button.'), ...
     arg_nogui({'parent_fig','ParentFigure'},[],[],'Parent figure handle.'), ...
     arg_nogui({'parent_ax','ParentAxes'},[],[],'Parent axis handle.'), ...    
     arg_nogui({'pageoffset','PageOffset'},0,uint32([0 100]),'Channel page offset. Allows to flip forward or backward pagewise through the displayed channels.'), ...
@@ -96,16 +109,82 @@ opts = arg_define(varargin, ...
 if ~isempty(varargin)
     % create stream inlet, figure and stream buffer
     inlet = create_inlet(lib,opts);
-    stream = create_streambuffer(opts,inlet.info());    
+    stream = create_streambuffer(opts,inlet.info()); 
+    
     [fig,axrms,ax,lines] = create_figure(opts,@on_key,@on_close);
+    opts.scalevals = [10 20 50 100 200 500 1000 ];
+    opts.scalepos  = 4;
+    
+    %scale
+    hh = 0.94;
+    uicontrol('unit', 'normalized', 'position', [0.04 hh-0.01 0.08 0.05], 'style', 'text', 'string', 'scale:');
+    uicontrol('unit', 'normalized', 'position', [0.17 hh-0.01 0.08 0.05], 'style', 'text', 'string', 'uV');
+    opts.scaleui = uicontrol('unit', 'normalized', 'position', [0.11 hh 0.08 0.05], 'style', 'edit', 'string', num2str(opts.datascale));
+    
+    % record button
+    if opts.recordbut
+        cb_record = [   'if isequal(get(gcbo, ''string''), ''Record''),' ...
+                        '    set(gcbo, ''string'', ''Stop'');' ...
+                        '    warndlg([ ''Your RAM should be able to hold the entire data.'' 10 ''When you press stop, you will be prompted to save the data.'' ]);' ...
+                        '    EEG = [];' ...
+                        'else,' ...
+                        '    set(gcbo, ''string'', ''Record'');' ...
+                        '    EEG.data = [ EEG.data{:} ];' ...
+                        '    EEG.trials = 1;' ...
+                        '    EEG.pnts   = size(EEG.data,2);' ...
+                        '    [filenametmp, filepathtmp] = uiputfile(''*.set'', ''Save dataset with .set extension'');' ...
+                        '    if isequal(filenametmp, 0), return; end;' ...
+                        '    try,' ...
+                        '        if ~isequal(lower(filenametmp(end-3:end)), ''.set''),' ...
+                        '             filenametmp = [ filenametmp ''.set'' ];' ...
+                        '        end;' ...
+                        '        save(''-mat'', fullfile(filepathtmp, filenametmp), ''EEG'');' ...
+                        '        disp(''Dataset saved'');' ...
+                        '    catch,' ...
+                        '        errordlg([''Cannot save data file.'' 0 ''EEG data is still in the EEG variable'' 0 ''in the global workspace.'' ]);' ...
+                        '    end;' ...
+                        '    clear filenametmp, filepathtmp;' ...
+                        'end;' ];
+        opts.recordui  = uicontrol('unit', 'normalized', 'position', [0.87 0.05 0.10 0.10], 'style', 'pushbutton', 'string', 'Record', 'callback', cb_record, 'userdata', 0);
+    end
+    
     % optionally design a frequency filter
+    valFilter = 1;
+    strFilter = { 'No filter' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
+    allBs = { [] };
+    allBs{end+1} = design_bandpass([1  2 45 47],stream.srate,20,true);
+    allBs{end+1} = design_bandpass([4  5 45 47],stream.srate,20,true);
+    allBs{end+1} = design_bandpass([14 15 45 47],stream.srate,20,true);
+    allBs{end+1} = design_bandpass([ 6 7 13 14],stream.srate,20,true);
     if length(opts.freqfilter) == 4
-        B = design_bandpass(opts.freqfilter,stream.srate,20,true);
-    elseif isscalar(opts.freqfilter)
-        B = ones(opts.freqfilter,1)/max(1,opts.freqfilter);
+        allBs{end+1} = design_bandpass(opts.freqfilter,stream.srate,20,true);
+        strFilter{end+1} = sprintf('BP %1.0f-%1.0fHz', opts.freqfilter(2), opts.freqfilter(3));
+        valFilter = 6;
+    elseif isscalar(opts.freqfilter) 
+        if opts.freqfilter ~= 0
+            allBs{end+1} = ones(opts.freqfilter,1)/max(1,opts.freqfilter);
+            strFilter{end+1} = 'Moving av.';
+            valFilter = 6;
+        end
     else
         error('The FIR filter must be given as 4 frequencies in Hz [raise-start,raise-stop,fall-start,fall-stop] or moving-average length in samples.');
     end
+    opts.filterui = uicontrol('unit', 'normalized', 'position', [0.25 hh 0.20 0.05], 'style', 'popupmenu', 'string', strFilter, 'value', valFilter);
+    
+    % other options
+    opts.rerefui  = uicontrol('unit', 'normalized', 'position', [0.47 hh 0.15 0.05], 'style', 'checkbox', 'string', 'Ave Ref', 'value', opts.reref);
+    opts.normui   = uicontrol('unit', 'normalized', 'position', [0.60 hh 0.12 0.05], 'style', 'checkbox', 'string', 'Norm.', 'value', opts.standardize);
+    opts.zeroui   = uicontrol('unit', 'normalized', 'position', [0.73 hh 0.22 0.05], 'style', 'checkbox', 'string', 'Zero mean', 'value', opts.zeromean);
+    
+    % filtering UI
+%     B50 = design_bandpass(opts.freqfilter,stream.srate,20,true);
+%     valGui
+%     if ~isempty(opts.notch)
+%         if opts.notch == 50, valGui = 2; end
+%         if opts.notch == 60, valGui = 3; end
+%     end
+%    opts.notchfilterui  = uicontrol('unit', 'normalized', 'position', [0.25 0.945 0.18 0.05], 'style', 'popupmenu', 'string', { 'No notch' 'Notch 50Hz' 'Notch 60Hz' }, 'value', valGui, 'userdata', );
+
     % start a timer that reads from LSL and updates the display
     th = timer('TimerFcn',@on_timer,'Period',1.0/opts.refreshrate,'ExecutionMode','fixedRate');
     start(th);
@@ -116,7 +195,9 @@ end
 
     % update display with new data
     function on_timer(varargin)
+        global EEG;
         try 
+    
             % pull a new chunk from LSL
             [chunk,timestamps] = inlet.pull_chunk();
             if isempty(chunk)
@@ -124,8 +205,14 @@ end
             
             % optionally filter the chunk
             chunk(~isfinite(chunk(:))) = 0;
+            oriChunk = chunk;
+            B = allBs{get(opts.filterui, 'value')};
             if ~isempty(B)
                 [chunk,stream.state] = filter(B,1,chunk,stream.state,2); end
+
+            % get scale
+            tmpscale = str2double(get(opts.scaleui, 'string'));
+            if length(tmpscale) == 1, opts.datascale = tmpscale; end;
 
             % append it to the stream buffer
             [stream.nsamples,stream.buffer(:,1+mod(stream.nsamples:stream.nsamples+size(chunk,2)-1,size(stream.buffer,2)))] = deal(stream.nsamples + size(chunk,2),chunk);
@@ -137,13 +224,70 @@ end
             [stream.nbchan,stream.pnts,stream.trials] = size(stream.data);
             stream.xmax = max(timestamps) - lsl_local_clock(lib);
             stream.xmin = stream.xmax - (samples_to_get-1)/stream.srate;
+            
+            % save as EEG dataset
+            if opts.recordbut
+                % get recording status
+                strRecord = get(opts.recordui, 'string');
+                currentlyRecording = false;
+                if isequal(strRecord, 'Stop')
+                    currentlyRecording = true;
+                end
 
+                if currentlyRecording
+                    if isempty(EEG)
+                        EEG.nbchan = stream.nbchan;
+                        EEG.xmin  = 0;
+                        EEG.xmax  = 0;
+                        EEG.srate = stream.srate;
+                        EEG.data = {};
+                        EEG.setname     = '';
+                        EEG.filename    = '';
+                        EEG.filepath    = '';
+                        EEG.subject     = '';
+                        EEG.group       = '';
+                        EEG.condition   = '';
+                        EEG.session     = [];
+                        EEG.comments    = '';
+                        EEG.times       = [];
+                        EEG.icaact      = [];
+                        EEG.icawinv     = [];
+                        EEG.icasphere   = [];
+                        EEG.icaweights  = [];
+                        EEG.icachansind = [];
+                        EEG.chanlocs    = [];
+                        EEG.urchanlocs  = [];
+                        EEG.chaninfo    = [];
+                        EEG.ref         = [];
+                        EEG.event       = [];
+                        EEG.urevent     = [];
+                        EEG.eventdescription = {};
+                        EEG.epoch       = [];
+                        EEG.epochdescription = {};
+                        EEG.reject      = [];
+                        EEG.stats       = [];
+                        EEG.specdata    = [];
+                        EEG.specicaact  = [];
+                        EEG.splinefile  = '';
+                        EEG.icasplinefile = '';
+                        EEG.dipfit      = [];
+                        EEG.history     = '';
+                        EEG.saved       = 'no';
+                        EEG.etc         = [];
+                    end
+                    if ~iscell(EEG.data)
+                        EEG.data = {};
+                    end
+                    EEG.data{end+1} = oriChunk;
+                end
+            end
+            
             % optionally post-process the data
-            if opts.reref
+            if get(opts.rerefui, 'value')
                 stream.data = bsxfun(@minus,stream.data,mean(stream.data)); end
-            if opts.standardize
+            if get(opts.normui, 'value')
                 stream.data = bsxfun(@times,stream.data,1./std(stream.data,[],2)); end
-            if opts.zeromean
+            if get(opts.zeroui, 'value')
                 stream.data = bsxfun(@minus, stream.data, mean(stream.data,2)); end
 
             % arrange for plotting
@@ -154,7 +298,6 @@ end
             % update graphics
             if isempty(lines)    
                 lines = plot(ax,plottime,plotdata);
-                title(ax,opts.streamname);
                 xlabel(ax,'Time (sec)','FontSize',12);
                 ylabel(ax,'Activation','FontSize',12);
             else
@@ -201,9 +344,9 @@ end
     function on_key(key)
         switch lower(key)
             case 'uparrow' % decrease datascale                
-                opts.datascale = opts.datascale*0.9;
+                opts.datascale = round(opts.datascale*0.9); set(opts.scaleui, 'string', num2str(opts.datascale));
             case 'downarrow' % increase datascale                
-                opts.datascale = opts.datascale*1.1;
+                opts.datascale = round(opts.datascale*1.1); set(opts.scaleui, 'string', num2str(opts.datascale));
             case 'rightarrow' % increase timerange                
                 opts.timerange = opts.timerange*1.1;                
             case 'leftarrow' % decrease timerange                
@@ -231,8 +374,6 @@ end
 function names = find_streams(lib)
     streams = lsl_resolve_all(lib,0.3);
     names = unique(cellfun(@(s)s.name(),streams ,'UniformOutput',false));
-    if isempty(names)
-        error('There is no stream visible on the network.'); end
 end
 
 % create a new figure and axes
@@ -241,17 +382,15 @@ function [fig,axrms,ax,lines] = create_figure(opts,on_key,on_close)
     if isempty(opts.parent_ax)
         if isempty(opts.parent_fig)
             fig = figure('Name',['LSL:Stream''' opts.streamname ''''], 'CloseRequestFcn',on_close, ...
-                'KeyPressFcn',@(varargin)on_key(varargin{2}.Key));
+                'KeyPressFcn',@(varargin)on_key(varargin{2}.Key), 'menubar', 'none', 'numbertitle', 'off');
             %fig = figure('Name',['LSL:Stream''' opts.streamname '''']);
         else
             fig = opts.parent_fig;
         end
         if opts.rms
             axrms = axes('Parent',fig, 'YAxisLocation', 'right', 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150]);
-            ax    = axes('Parent',fig, 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150]);
-        else
-            ax    = axes('Parent',fig, 'YDir','normal');
         end
+        ax    = axes('Parent',fig, 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150]);
     else
         ax = opts.parent_ax;
     end       

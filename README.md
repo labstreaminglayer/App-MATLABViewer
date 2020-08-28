@@ -60,3 +60,8 @@ Press package. Test using the executable in "for_testing" folder. For example te
 
 # Caveats
 Currently, marker streams are not being displayed, and streams with irregular sampling rate will not have the correct time axis.
+
+# Versions
+
+v1.0 - Initial EEGLAB plugin release
+
