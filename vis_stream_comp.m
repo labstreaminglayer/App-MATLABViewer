@@ -36,6 +36,7 @@ numFields  = { 'bufferrange' 'timerange' 'channelrange' 'samplingrate' 'refreshr
 
 for iField = 1:length(numFields)
     if isfield(opt, numFields{iField}) && ischar(opt.(numFields{iField})) 
+        opt.(numFields{iField}) = strrep(opt.(numFields{iField}), '_', ' ');
         opt.(numFields{iField}) = str2num(opt.(numFields{iField})); % will convert booleans as well
     end
 end

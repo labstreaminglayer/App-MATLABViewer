@@ -67,7 +67,18 @@ function vis_stream(varargin)
 % make sure that dependencies are on the path and that LSL is loaded
 evalin('base', 'global EEG;');
 if ~exist('lsl_loadlib','file')
-    addpath(genpath(fileparts(mfilename('fullpath')))); end
+    addpath(genpath(fileparts(mfilename('fullpath')))); 
+end
+if ~isdeployed
+    try
+        p = path;
+        if ~isempty(strfind(p, 'Contents/MacOS'))
+            error('Path corrupted, remove compiled folder');
+        end
+    catch
+        error('Path corrupted, remove compiled folder');
+    end        
+end
 try
     lib = lsl_loadlib(env_translatepath('dependencies:/liblsl-Matlab/bin'));
 catch
@@ -117,9 +128,13 @@ if ~isempty(varargin)
     
     %scale
     hh = 0.94;
-    uicontrol('unit', 'normalized', 'position', [0.04 hh-0.01 0.08 0.05], 'style', 'text', 'string', 'scale:');
-    uicontrol('unit', 'normalized', 'position', [0.17 hh-0.01 0.08 0.05], 'style', 'text', 'string', 'uV');
-    opts.scaleui = uicontrol('unit', 'normalized', 'position', [0.11 hh 0.08 0.05], 'style', 'edit', 'string', num2str(opts.datascale));
+    offset = 0.09;
+    cb_stream = '';
+    streamnames2 = cellfun(@(x)[x ' stream'], streamnames, 'uniformoutput', false);
+    opts.streamui = uicontrol('unit', 'normalized', 'position', [0.02 hh 0.15 0.05], 'style', 'popupmenu', 'string', streamnames2, 'callback', cb_stream);
+    uicontrol('unit', 'normalized', 'position', [0.09+offset hh-0.01 0.08 0.05], 'style', 'text', 'string', 'scale:');
+    uicontrol('unit', 'normalized', 'position', [0.22+offset hh-0.01 0.08 0.05], 'style', 'text', 'string', 'uV');
+    opts.scaleui = uicontrol('unit', 'normalized', 'position', [0.16+offset hh 0.08 0.05], 'style', 'edit', 'string', num2str(opts.datascale));
     
     % record button
     if opts.recordbut
@@ -169,12 +184,12 @@ if ~isempty(varargin)
     else
         error('The FIR filter must be given as 4 frequencies in Hz [raise-start,raise-stop,fall-start,fall-stop] or moving-average length in samples.');
     end
-    opts.filterui = uicontrol('unit', 'normalized', 'position', [0.25 hh 0.20 0.05], 'style', 'popupmenu', 'string', strFilter, 'value', valFilter);
+    opts.filterui = uicontrol('unit', 'normalized', 'position', [0.30+offset hh 0.18 0.05], 'style', 'popupmenu', 'string', strFilter, 'value', valFilter);
     
     % other options
-    opts.rerefui  = uicontrol('unit', 'normalized', 'position', [0.47 hh 0.15 0.05], 'style', 'checkbox', 'string', 'Ave Ref', 'value', opts.reref);
-    opts.normui   = uicontrol('unit', 'normalized', 'position', [0.60 hh 0.12 0.05], 'style', 'checkbox', 'string', 'Norm.', 'value', opts.standardize);
-    opts.zeroui   = uicontrol('unit', 'normalized', 'position', [0.73 hh 0.22 0.05], 'style', 'checkbox', 'string', 'Zero mean', 'value', opts.zeromean);
+    opts.rerefui  = uicontrol('unit', 'normalized', 'position', [0.48+offset hh 0.15 0.05], 'style', 'checkbox', 'string', 'Ave Ref', 'value', opts.reref);
+    opts.normui   = uicontrol('unit', 'normalized', 'position', [0.61+offset hh 0.11 0.05], 'style', 'checkbox', 'string', 'Norm.', 'value', opts.standardize);
+    opts.zeroui   = uicontrol('unit', 'normalized', 'position', [0.73+offset hh 0.22 0.05], 'style', 'checkbox', 'string', 'Zero mean', 'value', opts.zeromean);
     
     % filtering UI
 %     B50 = design_bandpass(opts.freqfilter,stream.srate,20,true);
@@ -198,6 +213,12 @@ end
         global EEG;
         try 
     
+            % switch stream
+            if ~isequal(opts.streamname, streamnames{get(opts.streamui, 'value')})
+                inlet = create_inlet(lib,opts);
+                stream = create_streambuffer(opts,inlet.info()); 
+            end
+            
             % pull a new chunk from LSL
             [chunk,timestamps] = inlet.pull_chunk();
             if isempty(chunk)
@@ -365,6 +386,7 @@ end
             stop(th);
             delete(th);
         catch
+            delete(gcf);
         end
     end
 
@@ -390,7 +412,7 @@ function [fig,axrms,ax,lines] = create_figure(opts,on_key,on_close)
         if opts.rms
             axrms = axes('Parent',fig, 'YAxisLocation', 'right', 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150]);
         end
-        ax    = axes('Parent',fig, 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150]);
+        ax    = axes('Parent',fig, 'unit', 'normalized', 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150], 'visible', 'on');
     else
         ax = opts.parent_ax;
     end       
