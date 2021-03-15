@@ -16,13 +16,13 @@ The folder containing the LSL librairy should be name "liblsl-Matlab" (if it is 
 
   * Now type `vis_stream` to bring up the viewer GUI; it should give you a window that looks like the following. If you don't have a stream online it will finish with an error message. If the program gets stuck or return an error, try instead setting parameters throught he command line to avoid having to use the graphic interfaces (which sometimes create problems). For example, type `vis_stream('timerange',5)`
 
-> ![screenshots/visstream-gui.png](screenshots/visstream-gui2.png)
+![screenshots/visstream-gui.png](screenshots/visstream-gui2.png)
 
   * Select the stream that you want to display. If you cannot see a stream that should be running (e.g., on another computer), read the Network Troubleshooting section on the NetworkConnectivity page. For a quick test, you might click OK right away to bring up the real-time view, or you might configure some of the display parameters first. Upon clicking okay you will get a window like the following:
 
-> ![screenshots/visstream-initial.png](screenshots/visstream-scroll.png)
+![screenshots/visstream-initial.png](screenshots/visstream-scroll.png)
 
-> Most likely the graph scale is initially not quite right, so you probably want to resize the data by holding down either the cursor up (scale up) or cursor down (scale down) arrow.
+Most likely the graph scale is initially not quite right, so you probably want to resize the data by holding down either the cursor up (scale up) or cursor down (scale down) arrow.
 
   * You can also adapt the time scale with the left/right cursor keys and if you have more channels than the ones that are displayed in one page, you can press page down or page up to flip through the channel pages. The number of channels per page and the initial range to display can be configured in the initial dialog.
 
