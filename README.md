@@ -1,12 +1,14 @@
 # Overview
 
-The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the full LSL distribution. It allows you to view the signal content of any stream on your lab network in real time. There is also an alternative viewer available that is written in C++ and does not require MATLAB (the StreamViewer).
+The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the full LSL distribution. It allows you to view the signal content of any stream on your lab network in real time. It is available under Matlab or in its compiled version. There is also an [alternative viewers](https://labstreaminglayer.readthedocs.io/info/viewers.html) available.
+
+[![Watch the demo](http://img.youtube.com/vi/tDDkrmv3ZKE/0.jpg)](https://www.youtube.com/embed/tDDkrmv3ZKE?start=66)
 
 # Installation for Mac and Windows
 
 After cloning the project, get the latest LSL Matlab librairies from https://github.com/labstreaminglayer/liblsl-Matlab/releases/ (note that some releases only have Windows files while others have both Mac and Windows file). This project was successfully run with liblsl-Matlab-lsl1_14-MatlabR2020a-Win64-VS2017.zip (Windows) and liblsl1_13_0_b13-MatlabR2019a-MacOS10_14.zip (MacOS).
 
-The folder should be name "liblsl-Matlab" (if it is not rename it) and should be placed inside this project (the path will then be automatically detected). Some releases of liblsl-Matlab do not contain a "bin" subfolders and should be avoided. The Matlab version that was used to compile "liblsl-Matlab" is not important and you may use different versions of Matlab to run the Matlab viewer.
+The folder containing the LSL librairy should be name "liblsl-Matlab" (if it is not rename it) and should be placed inside this project (the path will then be automatically detected). Some releases of liblsl-Matlab do not contain a "bin" subfolders and should be avoided. The Matlab version that was used to compile "liblsl-Matlab" is not important and you may use different versions of Matlab to run the Matlab viewer.
 
 # Usage
 
@@ -16,19 +18,17 @@ The folder should be name "liblsl-Matlab" (if it is not rename it) and should be
 
   * Now type `vis_stream` to bring up the viewer GUI; it should give you a window that looks like the following. If you don't have a stream online it will finish with an error message. If the program gets stuck or return an error, try instead setting parameters throught he command line to avoid having to use the graphic interfaces (which sometimes create problems). For example, type `vis_stream('timerange',5)`
 
-> ![screenshots/visstream-gui.png](screenshots/visstream-gui.png)
+![screenshots/visstream-gui.png](screenshots/visstream-gui2.png)
 
   * Select the stream that you want to display. If you cannot see a stream that should be running (e.g., on another computer), read the Network Troubleshooting section on the NetworkConnectivity page. For a quick test, you might click OK right away to bring up the real-time view, or you might configure some of the display parameters first. Upon clicking okay you will get a window like the following:
 
-> ![screenshots/visstream-initial.png](screenshots/visstream-initial.png)
+![screenshots/visstream-initial.png](screenshots/visstream-scroll.png)
 
-> Most likely the graph scale is initially not quite right, so you probably want to resize the data by holding down either the cursor up (scale up) or cursor down (scale down) arrow. Once you have adapted the scales and window size your display will look closer to this:
-
-> ![screenshots/visstream-adapted.png](screenshots/visstream-adapted.png)
+Most likely the graph scale is initially not quite right, so you probably want to resize the data by holding down either the cursor up (scale up) or cursor down (scale down) arrow.
 
   * You can also adapt the time scale with the left/right cursor keys and if you have more channels than the ones that are displayed in one page, you can press page down or page up to flip through the channel pages. The number of channels per page and the initial range to display can be configured in the initial dialog.
 
-  * The display updates in the background, so you can go ahead and open more viewports by calling vis\_stream again.
+  * The display updates in the background, so you can go ahead and open more viewports by calling vis_stream again.
 
 
 # GUI and Command-Line Options
