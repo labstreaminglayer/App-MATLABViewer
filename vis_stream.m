@@ -102,6 +102,7 @@ opts = arg_define(varargin, ...
     arg({'streamname','StreamName'},streamnames{1},streamnames,'LSL stream that should be displayed. The name of the stream that you would like to display.'), ...
     arg({'bufferrange','BufferRange'},10,[0 Inf],'Maximum time range to buffer. Imposes an upper limit on what can be displayed.'), ...
     arg({'timerange','TimeRange'},5,[0 Inf],'Initial time range in seconds. The time range of the display window; can be changed with keyboard shortcuts (see help).'), ...
+    arg({'rmsrange','RMSRange'},1,[0 Inf],'RMS time range in seconds.'), ...
     arg({'datascale','DataScale'},150,[0 Inf],'Initial scale of the data. The scale of the data, in units between horizontal lines; can be changed with keyboard shortcuts (see help).'), ...
     arg({'channelrange','ChannelRange'},1:32,uint32([1 1000000]),'Channels to display. The channel range to display.'), ...
     arg({'samplingrate','SamplingRate'},100,[0 Inf],'Sampling rate for display. This is the sampling rate that is used for plotting; for faster drawing.'), ...
@@ -165,9 +166,10 @@ if ~isempty(varargin)
     
     % optionally design a frequency filter
     valFilter = 1;
-    strFilter = { 'No filter' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
+    strFilter = { 'No filter' 'BP 2-30Hz' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
     allBs = { [] };
     if stream.srate > 100
+        allBs{end+1} = design_bandpass([1  2 29 31],stream.srate,20,true);
         allBs{end+1} = design_bandpass([1  2 45 47],stream.srate,20,true);
         allBs{end+1} = design_bandpass([4  5 45 47],stream.srate,20,true);
         allBs{end+1} = design_bandpass([14 15 45 47],stream.srate,20,true);
@@ -331,7 +333,7 @@ end
             % update graphics
             if isempty(lines)    
                 lines = plot(ax,plottime,plotdata);
-                xlabel(ax,'Time (sec)','FontSize',12);
+                xlabel(ax,sprintf('Time (%1.1f sec)',opts.timerange) ,'FontSize',12);
                 ylabel(ax,'Activation','FontSize',12);
             else
                 for k=1:min(length(lines),size(plotdata,1))
@@ -343,16 +345,19 @@ end
             % update the axis limit and tickmarks
             axis(ax   ,[stream.xmin stream.xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
             set(ax, 'YTick',plotoffsets, 'YTickLabel',{stream.chanlocs(channels_to_get).labels});
+            set(ax, 'XTick',[], 'XTickLabel',[]);
             
             % compute RMS and show it
             if opts.rms
                 axis(axrms,[stream.xmin stream.xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
-                rms = sqrt(mean(bsxfun(@minus, plotdata, mean(plotdata,2)).^2,2));
+                rmsdata = plotdata(:, round(size(plotdata,2)*opts.rmsrange/opts.timerange):end);
+                rms = sqrt(mean(bsxfun(@minus, rmsdata, mean(rmsdata,2)).^2,2));
                 rmsStr = {};
                 for iRms = 1:length(rms)
                     rmsStr{iRms} = sprintf('%2.1f uVrms', rms(iRms));
                 end
                 set(axrms, 'YTick',plotoffsets, 'YTickLabel',rmsStr);
+                set(axrms, 'XTick',[], 'XTickLabel',[]);
             end
             drawnow;
         catch e
