@@ -66,10 +66,10 @@ function vis_stream(varargin)
 
 % make sure that dependencies are on the path and that LSL is loaded
 evalin('base', 'global EEG;');
-if ~exist('lsl_loadlib','file')
-    addpath(genpath(fileparts(mfilename('fullpath')))); 
-end
 if ~isdeployed
+    if ~exist('lsl_loadlib','file')
+        addpath(genpath(fileparts(mfilename('fullpath')))); 
+    end
     try
         p = path;
         if ~isempty(strfind(p, 'Contents/MacOS'))
@@ -167,22 +167,25 @@ if ~isempty(varargin)
     valFilter = 1;
     strFilter = { 'No filter' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
     allBs = { [] };
-    allBs{end+1} = design_bandpass([1  2 45 47],stream.srate,20,true);
-    allBs{end+1} = design_bandpass([4  5 45 47],stream.srate,20,true);
-    allBs{end+1} = design_bandpass([14 15 45 47],stream.srate,20,true);
-    allBs{end+1} = design_bandpass([ 6 7 13 14],stream.srate,20,true);
-    if length(opts.freqfilter) == 4
-        allBs{end+1} = design_bandpass(opts.freqfilter,stream.srate,20,true);
-        strFilter{end+1} = sprintf('BP %1.0f-%1.0fHz', opts.freqfilter(2), opts.freqfilter(3));
-        valFilter = 6;
-    elseif isscalar(opts.freqfilter) 
-        if opts.freqfilter ~= 0
-            allBs{end+1} = ones(opts.freqfilter,1)/max(1,opts.freqfilter);
-            strFilter{end+1} = 'Moving av.';
+    if stream.srate > 100
+        allBs{end+1} = design_bandpass([1  2 45 47],stream.srate,20,true);
+        allBs{end+1} = design_bandpass([4  5 45 47],stream.srate,20,true);
+        allBs{end+1} = design_bandpass([14 15 45 47],stream.srate,20,true);
+        allBs{end+1} = design_bandpass([ 6 7 13 14],stream.srate,20,true);
+        
+        if length(opts.freqfilter) == 4
+            allBs{end+1} = design_bandpass(opts.freqfilter,stream.srate,20,true);
+            strFilter{end+1} = sprintf('BP %1.0f-%1.0fHz', opts.freqfilter(2), opts.freqfilter(3));
             valFilter = 6;
+        elseif isscalar(opts.freqfilter) 
+            if opts.freqfilter ~= 0
+                allBs{end+1} = ones(opts.freqfilter,1)/max(1,opts.freqfilter);
+                strFilter{end+1} = 'Moving av.';
+                valFilter = 6;
+            end
+        else
+            error('The FIR filter must be given as 4 frequencies in Hz [raise-start,raise-stop,fall-start,fall-stop] or moving-average length in samples.');
         end
-    else
-        error('The FIR filter must be given as 4 frequencies in Hz [raise-start,raise-stop,fall-start,fall-stop] or moving-average length in samples.');
     end
     opts.filterui = uicontrol('unit', 'normalized', 'position', [0.30+offset hh 0.18 0.05], 'style', 'popupmenu', 'string', strFilter, 'value', valFilter);
     
@@ -212,11 +215,27 @@ end
     function on_timer(varargin)
         global EEG;
         try 
-    
+            currentlyRecording = false;
+            if opts.recordbut
+                % get recording status
+                strRecord = get(opts.recordui, 'string');
+                if isequal(strRecord, 'Stop')
+                    currentlyRecording = true;
+                end
+            end
+            
             % switch stream
             if ~isequal(opts.streamname, streamnames{get(opts.streamui, 'value')})
-                inlet = create_inlet(lib,opts);
-                stream = create_streambuffer(opts,inlet.info()); 
+                if ~currentlyRecording
+                    opts.streamname = streamnames{get(opts.streamui, 'value')};
+                    inlet = create_inlet(lib,opts);
+                    stream = create_streambuffer(opts,inlet.info()); 
+                    lines = [];
+                else
+                    disp('Cannot switch stream while recording');
+                    streamPos = strmatch(opts.streamname, streamnames, 'exact');
+                    set(opts.streamui, 'value', streamPos);
+                end
             end
             
             % pull a new chunk from LSL
@@ -233,7 +252,7 @@ end
 
             % get scale
             tmpscale = str2double(get(opts.scaleui, 'string'));
-            if length(tmpscale) == 1, opts.datascale = tmpscale; end;
+            if length(tmpscale) == 1, opts.datascale = tmpscale; end
 
             % append it to the stream buffer
             [stream.nsamples,stream.buffer(:,1+mod(stream.nsamples:stream.nsamples+size(chunk,2)-1,size(stream.buffer,2)))] = deal(stream.nsamples + size(chunk,2),chunk);
@@ -248,13 +267,6 @@ end
             
             % save as EEG dataset
             if opts.recordbut
-                % get recording status
-                strRecord = get(opts.recordui, 'string');
-                currentlyRecording = false;
-                if isequal(strRecord, 'Stop')
-                    currentlyRecording = true;
-                end
-
                 if currentlyRecording
                     if isempty(EEG)
                         EEG.nbchan = stream.nbchan;
