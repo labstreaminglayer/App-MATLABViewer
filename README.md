@@ -69,3 +69,5 @@ Currently, marker streams are not being displayed, and streams with irregular sa
 
 v1.0 - Initial EEGLAB plugin release
 
+v1.1 - Fix path issue
+
