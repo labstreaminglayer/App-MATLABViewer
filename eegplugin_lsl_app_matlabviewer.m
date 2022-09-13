@@ -30,7 +30,7 @@
 
 function vers = eegplugin_lsl_app_matlabviewer(fig, trystrs, catchstrs)
 
-    vers = 'lsl_app_matlabviewer1.0';
+    vers = 'lsl_app_matlabviewer1.1';
     if nargin < 3
         error('eegplugin_bva_io requires 3 arguments');
     end
@@ -41,6 +41,10 @@ function vers = eegplugin_lsl_app_matlabviewer(fig, trystrs, catchstrs)
         p = which('eegplugin_lsl_app_matlabviewer.m');
         p = p(1:findstr(p,'eegplugin_lsl_app_matlabviewer.m')-1);
         addpath( p );
+        addpath( fullfile(p, 'liblsl-Matlab') );
+        addpath( fullfile(p, 'liblsl-Matlab', 'bin') );
+        addpath( fullfile(p, 'liblsl-Matlab', 'mex') );
+        addpath( fullfile(p, 'arg_system') );
     end
     
     % find import data menu
