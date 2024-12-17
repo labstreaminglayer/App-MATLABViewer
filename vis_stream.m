@@ -63,12 +63,11 @@ function vis_stream(varargin)
 %                                uses portions of vis_dataStreamViewer
 %                                (c) 2012 by Tim Mullen
 
-
 % make sure that dependencies are on the path and that LSL is loaded
 evalin('base', 'global EEG;');
 if ~isdeployed
     if ~exist('lsl_loadlib','file')
-        addpath(genpath(fileparts(mfilename('fullpath')))); 
+        addpath(genpath(fileparts(mfilename('fullpath'))));
     end
     try
         p = path;
@@ -77,7 +76,7 @@ if ~isdeployed
         end
     catch
         error('Path corrupted, remove compiled folder');
-    end        
+    end
 end
 try
     lib = lsl_loadlib(env_translatepath('dependencies:/liblsl-Matlab/bin'));
@@ -100,19 +99,21 @@ end
     % arg({'notchfilter','NotchFilter'},0,[0 Inf],'Notch filter. Enter 50 or 60 based on line noise frequency in your country.'), ...
 opts = arg_define(varargin, ...
     arg({'streamname','StreamName'},streamnames{1},streamnames,'LSL stream that should be displayed. The name of the stream that you would like to display.'), ...
-    arg({'bufferrange','BufferRange'},10,[0 Inf],'Maximum time range to buffer. Imposes an upper limit on what can be displayed.'), ...
     arg({'timerange','TimeRange'},5,[0 Inf],'Initial time range in seconds. The time range of the display window; can be changed with keyboard shortcuts (see help).'), ...
     arg({'rmsrange','RMSRange'},1,[0 Inf],'RMS time range in seconds.'), ...
     arg({'datascale','DataScale'},150,[0 Inf],'Initial scale of the data. The scale of the data, in units between horizontal lines; can be changed with keyboard shortcuts (see help).'), ...
     arg({'channelrange','ChannelRange'},1:32,uint32([1 1000000]),'Channels to display. The channel range to display.'), ...
-    arg({'samplingrate','SamplingRate'},100,[0 Inf],'Sampling rate for display. This is the sampling rate that is used for plotting; for faster drawing.'), ...
-    arg({'refreshrate','RefreshRate'},10,[0 Inf],'Refresh rate for display. This is the rate at which the graphics are updated.'), ...
+    arg({'subsample','SubSample'},2,[0 Inf],'Subsample data for faster drawing.'), ...
+    arg({'refreshrate','RefreshRate'},10,[0 Inf],'Display refresh rate in Hz. This is the rate at which the graphics are updated.'), ...
+    arg({'asrcutoff','AsrCutoff'},[],[0 Inf],'ASR cutoff threshold (try 20).'), ...
     arg({'freqfilter','FrequencyFilter','moving_avg','MovingAverageLength'},0,[0 Inf],'Frequency filter. The parameters of a bandpass filter [raise-start,raise-stop,fall-start,fall-stop], e.g., [7 8 14 15] for a filter with 8-14 Hz pass-band and 1 Hz transition bandwidth between passband and stop-bands; if given as a single scalar, a moving-average filter is designed (legacy option).'), ...
     arg({'reref','Rereference'},false,[],'Common average reference. Enable this to view the data with a common average reference filter applied.'), ...
     arg({'standardize','Standardize'},false,[],'Standardize data.'), ...
     arg({'rms','RMS'},true,[],'Show RMS for each channel.'), ...
     arg({'zeromean','ZeroMean'},true,[],'Zero-mean data.'), ...
     arg({'recordbut','RecordButton'},true,[],'Show Record button.'), ...
+    arg_nogui({'bufferrange','BufferRange'},10,[0 Inf],'Maximum time range to buffer. Imposes an upper limit on what can be displayed.'), ...
+    arg_nogui({'samplingrate','SamplingRate'},128,[0 Inf],'Sampling rate for display. This is the sampling rate that is used for plotting; for faster drawing. Deprecated.'), ...
     arg_nogui({'parent_fig','ParentFigure'},[],[],'Parent figure handle.'), ...
     arg_nogui({'parent_ax','ParentAxes'},[],[],'Parent axis handle.'), ...    
     arg_nogui({'pageoffset','PageOffset'},0,uint32([0 100]),'Channel page offset. Allows to flip forward or backward pagewise through the displayed channels.'), ...
@@ -122,7 +123,8 @@ if ~isempty(varargin)
     % create stream inlet, figure and stream buffer
     inlet = create_inlet(lib,opts);
     stream = create_streambuffer(opts,inlet.info()); 
-    
+    stateAsr = [];
+
     [fig,axrms,ax,lines] = create_figure(opts,@on_key,@on_close);
     opts.scalevals = [10 20 50 100 200 500 1000 ];
     opts.scalepos  = 4;
@@ -239,7 +241,7 @@ end
                     set(opts.streamui, 'value', streamPos);
                 end
             end
-            
+    
             % pull a new chunk from LSL
             [chunk,timestamps] = inlet.pull_chunk();
             if isempty(chunk)
@@ -250,7 +252,19 @@ end
             oriChunk = chunk;
             B = allBs{get(opts.filterui, 'value')};
             if ~isempty(B)
-                [chunk,stream.state] = filter(B,1,chunk,stream.state,2); end
+                [chunk,stream.state] = filter(B,1,chunk,stream.state,2); 
+            end
+
+            if ~isempty(opts.asrcutoff) 
+                if stream.nsamples > size(stream.buffer,2)
+                    if isempty(stateAsr)
+                        disp('Buffer full, calibrating ASR...')
+                        stateAsr = asr_calibrate(stream.buffer, stream.srate, opts.asrcutoff, [], [], [], [], [], [], [], 64);
+                    else
+                        [chunk, stateAsr]= asr_process(chunk, stream.srate, stateAsr, [],[],[],[],64);
+                    end
+                end
+            end
 
             % get scale
             tmpscale = str2double(get(opts.scaleui, 'string'));
@@ -262,13 +276,14 @@ end
             % extract channels/samples to plot
             samples_to_get = min(size(stream.buffer,2), round(stream.srate*opts.timerange));
             channels_to_get = intersect(opts.channelrange + opts.pageoffset*length(opts.channelrange), 1:size(stream.buffer,1));
-            stream.data = stream.buffer(channels_to_get,1+floor(mod(stream.nsamples-samples_to_get: stream.srate/opts.samplingrate : stream.nsamples-1,size(stream.buffer,2))));
+            stream.data = stream.buffer(channels_to_get,1+floor(mod(stream.nsamples-samples_to_get: opts.subsample : stream.nsamples-1,size(stream.buffer,2))));
             [stream.nbchan,stream.pnts,stream.trials] = size(stream.data);
             stream.xmax = max(timestamps) - lsl_local_clock(lib);
             stream.xmin = stream.xmax - (samples_to_get-1)/stream.srate;
-            
+
             % save as EEG dataset
             if opts.recordbut
+
                 if currentlyRecording
                     if isempty(EEG)
                         EEG.nbchan = stream.nbchan;
@@ -328,12 +343,17 @@ end
             % arrange for plotting
             plotoffsets = (0:stream.nbchan-1)'*opts.datascale;
             plotdata = bsxfun(@plus, stream.data, plotoffsets);
-            plottime = linspace(stream.xmin,stream.xmax,stream.pnts);
-            
+            xmin = stream.count*opts.subsample/stream.srate;
+            xmax = (stream.count+stream.pnts)*opts.subsample/stream.srate;
+
+            plottime = linspace(xmin,xmax,stream.pnts);
+
+            stream.count = stream.count+floor(size(chunk, 2)/opts.subsample);
+
             % update graphics
             if isempty(lines)    
                 lines = plot(ax,plottime,plotdata);
-                xlabel(ax,sprintf('Time (%1.1f sec)',opts.timerange) ,'FontSize',12);
+                xlabel(ax,'Time (sec)','FontSize',12);
                 ylabel(ax,'Activation','FontSize',12);
             else
                 for k=1:min(length(lines),size(plotdata,1))
@@ -343,21 +363,19 @@ end
             end
             
             % update the axis limit and tickmarks
-            axis(ax   ,[stream.xmin stream.xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
-            set(ax, 'YTick',plotoffsets, 'YTickLabel',{stream.chanlocs(channels_to_get).labels});
-            set(ax, 'XTick',[], 'XTickLabel',[]);
+            axis(ax   ,[xmin xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
+            set(ax, 'YTick',plotoffsets, 'YTickLabel',{stream.chanlocs(channels_to_get).labels}, 'xtick', ceil(xmin):floor(xmax), 'xticklabel', ceil(xmin):floor(xmax));
             
             % compute RMS and show it
             if opts.rms
-                axis(axrms,[stream.xmin stream.xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
+                axis(axrms,[xmin xmax -opts.datascale stream.nbchan*opts.datascale + opts.datascale]);
                 rmsdata = plotdata(:, round(size(plotdata,2)*opts.rmsrange/opts.timerange):end);
                 rms = sqrt(mean(bsxfun(@minus, rmsdata, mean(rmsdata,2)).^2,2));
                 rmsStr = {};
                 for iRms = 1:length(rms)
                     rmsStr{iRms} = sprintf('%2.1f uVrms', rms(iRms));
                 end
-                set(axrms, 'YTick',plotoffsets, 'YTickLabel',rmsStr);
-                set(axrms, 'XTick',[], 'XTickLabel',[]);
+                set(axrms, 'YTick',plotoffsets, 'YTickLabel',rmsStr, 'xtick', ceil(xmin):floor(xmax), 'xticklabel', ceil(xmin):floor(xmax));
             end
             drawnow;
         catch e
@@ -422,6 +440,8 @@ function [fig,axrms,ax,lines] = create_figure(opts,on_key,on_close)
         if isempty(opts.parent_fig)
             fig = figure('Name',['LSL:Stream''' opts.streamname ''''], 'CloseRequestFcn',on_close, ...
                 'KeyPressFcn',@(varargin)on_key(varargin{2}.Key), 'menubar', 'none', 'numbertitle', 'off');
+            pos = get(gcf, 'position');
+            set(gcf, 'position', [ pos(1) pos(2) pos(3)*1.1 pos(4) ]);
             %fig = figure('Name',['LSL:Stream''' opts.streamname '''']);
         else
             fig = opts.parent_fig;
@@ -453,6 +473,7 @@ function stream = create_streambuffer(opts,info)
     stream.srate = info.nominal_srate();
     stream.chanlocs = struct('labels',derive_channel_labels(info));
     stream.buffer = zeros(length(stream.chanlocs),max(max(opts.bufferrange,opts.timerange)*stream.srate,100));
+    stream.count = 0;
     [stream.nsamples,stream.state] = deal(0,[]);
 end
 
