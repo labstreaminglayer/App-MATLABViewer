@@ -71,3 +71,4 @@ v1.0 - Initial EEGLAB plugin release
 
 v1.1 - Fix path issue
 
+v1.2 - Add multi-stream, fix xaxis, and support for newer Macs
