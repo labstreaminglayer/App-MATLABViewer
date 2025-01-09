@@ -30,7 +30,7 @@
 
 function vers = eegplugin_lsl_app_matlabviewer(fig, trystrs, catchstrs)
 
-    vers = 'lsl_app_matlabviewer1.2';
+    vers = 'lsl_app_matlabviewer1.3';
     if nargin < 3
         error('eegplugin_bva_io requires 3 arguments');
     end

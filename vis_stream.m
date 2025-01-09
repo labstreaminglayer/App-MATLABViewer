@@ -112,6 +112,7 @@ opts = arg_define(varargin, ...
     arg({'rms','RMS'},true,[],'Show RMS for each channel.'), ...
     arg({'zeromean','ZeroMean'},true,[],'Zero-mean data.'), ...
     arg({'recordbut','RecordButton'},true,[],'Show Record button.'), ...
+    arg_nogui({'maskchans','MaskChans'},[],[0 Inf],'Channels to mask.'), ...
     arg_nogui({'bufferrange','BufferRange'},10,[0 Inf],'Maximum time range to buffer. Imposes an upper limit on what can be displayed.'), ...
     arg_nogui({'samplingrate','SamplingRate'},128,[0 Inf],'Sampling rate for display. This is the sampling rate that is used for plotting; for faster drawing. Deprecated.'), ...
     arg_nogui({'parent_fig','ParentFigure'},[],[],'Parent figure handle.'), ...
@@ -126,6 +127,22 @@ if ~isempty(varargin)
     stateAsr = [];
 
     [fig,axrms,ax,lines] = create_figure(opts,@on_key,@on_close);
+
+    % show clicked coordinate when mouse is clicked
+    command = ...
+        ['tmppos = get(gca, ''CurrentPoint''); ' ...
+        'scaleui = findobj(gcf, ''tag'', ''scaleui''); ' ...
+        'scaleuival = str2double(get(scaleui, ''string''));' ...
+        'chanmask   = get(scaleui, ''userdata'');' ...
+        'chanclicked = round(tmppos(3)/scaleuival)+1;' ... 
+        'if any(chanmask == chanclicked), chanmask = setdiff(chanmask, chanclicked);' ...
+        'else                             chanmask = [ chanmask chanclicked ];' ...
+        'end;' ...
+        'set(scaleui, ''userdata'', chanmask);' ...
+        'clear tmppos scaleui chanmask chanclicked;' ...
+        ];
+    set(fig, 'windowbuttondownfcn', command );
+
     opts.scalevals = [10 20 50 100 200 500 1000 ];
     opts.scalepos  = 4;
     
@@ -137,7 +154,7 @@ if ~isempty(varargin)
     opts.streamui = uicontrol('unit', 'normalized', 'position', [0.02 hh 0.15 0.05], 'style', 'popupmenu', 'string', streamnames2, 'callback', cb_stream);
     uicontrol('unit', 'normalized', 'position', [0.09+offset hh-0.01 0.08 0.05], 'style', 'text', 'string', 'scale:');
     uicontrol('unit', 'normalized', 'position', [0.22+offset hh-0.01 0.08 0.05], 'style', 'text', 'string', 'uV');
-    opts.scaleui = uicontrol('unit', 'normalized', 'position', [0.16+offset hh 0.08 0.05], 'style', 'edit', 'string', num2str(opts.datascale));
+    opts.scaleui  = uicontrol('unit', 'normalized', 'position', [0.16+offset hh 0.08 0.05], 'style', 'edit', 'tag', 'scaleui', 'string', num2str(opts.datascale), 'userdata', opts.maskchans);
     
     % record button
     if opts.recordbut
@@ -168,9 +185,12 @@ if ~isempty(varargin)
     
     % optionally design a frequency filter
     valFilter = 1;
-    strFilter = { 'No filter' 'BP 2-30Hz' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
+    strFilter = { 'No filter' 'LP 50 Hz' 'BP 2-30Hz' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
     allBs = { [] };
+    fprintf('Stream sampling rate: %f\n', stream.srate);
+    fprintf(2,'Click on the channel traces to toggle them on or off.\n');
     if stream.srate > 100
+        allBs{end+1} = design_lp(50,stream.srate); % [-0.0006119454,-0.0010810137,0.0000000000,0.0016024562,0.0012724875,-0.0016467875,-0.0034348802,0.0000000000,0.0055416173,0.0042777407,-0.0052877217,-0.0104802706,0.0000000000,0.0154034580,0.0114650956,-0.0137866974,-0.0268545810,0.0000000000,0.0396189425,0.0303350991,-0.0385444881,-0.0826912490,0.0000000000,0.2004404544,0.3744622833,0.3744622833,0.2004404544,0.0000000000,-0.0826912490,-0.0385444881,0.0303350991,0.0396189425,0.0000000000,-0.0268545810,-0.0137866974,0.0114650956,0.0154034580,0.0000000000,-0.0104802706,-0.0052877217,0.0042777407,0.0055416173,0.0000000000,-0.0034348802,-0.0016467875,0.0012724875,0.0016024562,0.0000000000,-0.0010810137,-0.0006119454];
         allBs{end+1} = design_bandpass([1  2 29 31],stream.srate,20,true);
         allBs{end+1} = design_bandpass([1  2 45 47],stream.srate,20,true);
         allBs{end+1} = design_bandpass([4  5 45 47],stream.srate,20,true);
@@ -267,7 +287,8 @@ end
             end
 
             % get scale
-            tmpscale = str2double(get(opts.scaleui, 'string'));
+            tmpscale  = str2double(get(opts.scaleui, 'string'));
+            maskchans = get(opts.scaleui, 'userdata');
             if length(tmpscale) == 1, opts.datascale = tmpscale; end
 
             % append it to the stream buffer
@@ -345,6 +366,12 @@ end
             plotdata = bsxfun(@plus, stream.data, plotoffsets);
             xmin = stream.count*opts.subsample/stream.srate;
             xmax = (stream.count+stream.pnts)*opts.subsample/stream.srate;
+
+            if any(maskchans) % disable some channels by replacing them by NaNs
+                maskchans(maskchans < 1) = [];
+                maskchans(maskchans > size(plotdata,2)) = [];
+                plotdata(maskchans, :) = NaN;
+            end
 
             plottime = linspace(xmin,xmax,stream.pnts);
 
@@ -548,4 +575,12 @@ function W = design_kaiser(lo,hi,atten,odd)
         N = N+1; end
     % design the window
     W = besseli(0,beta*sqrt(1-(2*((0:(N-1))/(N-1))-1).^2))/besseli(0,beta);
+end
+
+function B = design_lp(fc,fs)
+    normalized_fc = fc / (fs / 2); % Normalized cutoff frequency
+    
+    % Design a low-pass FIR filter with 50 coefficients (order 49)
+    filter_order = 49; % Filter order (number of taps - 1)
+    B = fir1(filter_order, normalized_fc, 'low'); % Low-pass filter coefficients
 end
