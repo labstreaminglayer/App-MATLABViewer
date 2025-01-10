@@ -103,7 +103,7 @@ opts = arg_define(varargin, ...
     arg({'rmsrange','RMSRange'},1,[0 Inf],'RMS time range in seconds.'), ...
     arg({'datascale','DataScale'},150,[0 Inf],'Initial scale of the data. The scale of the data, in units between horizontal lines; can be changed with keyboard shortcuts (see help).'), ...
     arg({'channelrange','ChannelRange'},1:32,uint32([1 1000000]),'Channels to display. The channel range to display.'), ...
-    arg({'subsample','SubSample'},2,[0 Inf],'Subsample data for faster drawing.'), ...
+    arg({'subsample','SubSample'},1,[0 Inf],'Subsample for fast plotting (1=none).'), ...
     arg({'refreshrate','RefreshRate'},10,[0 Inf],'Display refresh rate in Hz. This is the rate at which the graphics are updated.'), ...
     arg({'asrcutoff','AsrCutoff'},[],[0 Inf],'ASR cutoff threshold (try 20).'), ...
     arg({'freqfilter','FrequencyFilter','moving_avg','MovingAverageLength'},0,[0 Inf],'Frequency filter. The parameters of a bandpass filter [raise-start,raise-stop,fall-start,fall-stop], e.g., [7 8 14 15] for a filter with 8-14 Hz pass-band and 1 Hz transition bandwidth between passband and stop-bands; if given as a single scalar, a moving-average filter is designed (legacy option).'), ...
@@ -185,12 +185,13 @@ if ~isempty(varargin)
     
     % optionally design a frequency filter
     valFilter = 1;
-    strFilter = { 'No filter' 'LP 50 Hz' 'BP 2-30Hz' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
+    strFilter = { 'No filter' 'LP 45 Hz' 'BP 0.5-45Hz' 'BP 2-30Hz' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
     allBs = { [] };
     fprintf('Stream sampling rate: %f\n', stream.srate);
     fprintf(2,'Click on the channel traces to toggle them on or off.\n');
     if stream.srate > 100
-        allBs{end+1} = design_lp(50,stream.srate); % [-0.0006119454,-0.0010810137,0.0000000000,0.0016024562,0.0012724875,-0.0016467875,-0.0034348802,0.0000000000,0.0055416173,0.0042777407,-0.0052877217,-0.0104802706,0.0000000000,0.0154034580,0.0114650956,-0.0137866974,-0.0268545810,0.0000000000,0.0396189425,0.0303350991,-0.0385444881,-0.0826912490,0.0000000000,0.2004404544,0.3744622833,0.3744622833,0.2004404544,0.0000000000,-0.0826912490,-0.0385444881,0.0303350991,0.0396189425,0.0000000000,-0.0268545810,-0.0137866974,0.0114650956,0.0154034580,0.0000000000,-0.0104802706,-0.0052877217,0.0042777407,0.0055416173,0.0000000000,-0.0034348802,-0.0016467875,0.0012724875,0.0016024562,0.0000000000,-0.0010810137,-0.0006119454];
+        allBs{end+1} = design_lp(45,stream.srate); % [-0.0006119454,-0.0010810137,0.0000000000,0.0016024562,0.0012724875,-0.0016467875,-0.0034348802,0.0000000000,0.0055416173,0.0042777407,-0.0052877217,-0.0104802706,0.0000000000,0.0154034580,0.0114650956,-0.0137866974,-0.0268545810,0.0000000000,0.0396189425,0.0303350991,-0.0385444881,-0.0826912490,0.0000000000,0.2004404544,0.3744622833,0.3744622833,0.2004404544,0.0000000000,-0.0826912490,-0.0385444881,0.0303350991,0.0396189425,0.0000000000,-0.0268545810,-0.0137866974,0.0114650956,0.0154034580,0.0000000000,-0.0104802706,-0.0052877217,0.0042777407,0.0055416173,0.0000000000,-0.0034348802,-0.0016467875,0.0012724875,0.0016024562,0.0000000000,-0.0010810137,-0.0006119454];
+        allBs{end+1} = design_bandpass([0.25  0.75 45 47],stream.srate,20,true);
         allBs{end+1} = design_bandpass([1  2 29 31],stream.srate,20,true);
         allBs{end+1} = design_bandpass([1  2 45 47],stream.srate,20,true);
         allBs{end+1} = design_bandpass([4  5 45 47],stream.srate,20,true);
@@ -272,7 +273,11 @@ end
             oriChunk = chunk;
             B = allBs{get(opts.filterui, 'value')};
             if ~isempty(B)
-                [chunk,stream.state] = filter(B,1,chunk,stream.state,2); 
+                if length(B) == length(stream.state)+1
+                    [chunk,stream.state] = filter(B,1,chunk,stream.state,2); 
+                else
+                    [chunk,stream.state] = filter(B,1,chunk,[],2); 
+                end
             end
 
             if ~isempty(opts.asrcutoff) 
