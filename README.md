@@ -31,6 +31,7 @@ Use the [release page](https://github.com/labstreaminglayer/App-MATLABViewer/rel
   * Now type `vis_stream` to bring up the viewer GUI; it should give you a window that looks like the following. If you don't have a stream online it will finish with an error message. If the program gets stuck or return an error, try instead setting parameters throught he command line to avoid having to use the graphic interfaces (which sometimes create problems). For example, type `vis_stream('timerange',5)`
 
 ![screenshots/visstream-gui.png](screenshots/visstream-gui2.png)
+
 (above is the interface when using within EEGLAB; it is grey when using the compiled version or when using the standalone MATLAB version)
 
   * Select the stream that you want to display. If you cannot see a stream that should be running (e.g., on another computer), read the Network Troubleshooting section on the NetworkConnectivity page. For a quick test, you might click OK right away to bring up the real-time view, or you might configure some of the display parameters first. Upon clicking okay you will get a window like the following:
