@@ -42,6 +42,8 @@ Use the [release page](https://github.com/labstreaminglayer/App-MATLABViewer/rel
 
 Most likely, the graph scale is initially not quite right, so you probably want to resize the data by holding down either the cursor up (scale up) or cursor down (scale down) arrow.
 
+  * Click on individual channel traces to toggle the display on or off for a specific channel. This is useful when noisy channels obstruct the visibility of other channels.
+
   * You can also adapt the time scale with the left/right cursor keys and if you have more channels than the ones that are displayed in one page, you can press page down or page up to flip through the channel pages. The number of channels per page and the initial range to display can be configured in the initial dialog.
 
   * The display updates in the background, so you can go ahead and open more viewports by calling vis_stream again.
