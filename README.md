@@ -4,9 +4,9 @@ This LSL viewer can be used with MATLAB, as well as EEGLAB, or it can be used wi
 
 The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the full LSL distribution. It allows you to view the signal content of any stream on your lab network in real time. It is available under Matlab or in its compiled version. There is also an [alternative viewers](https://labstreaminglayer.readthedocs.io/info/viewers.html) available.
 
-[![Watch the demo](http://img.youtube.com/vi/tDDkrmv3ZKE/0.jpg)](https://www.youtube.com/embed/tDDkrmv3ZKE?start=66)
-
 **Plugin moto:** it freaking works on both Windows and Mac (and if you're struggling with LSL, welcome).
+
+[![Watch the demo](http://img.youtube.com/vi/tDDkrmv3ZKE/0.jpg)](https://www.youtube.com/embed/tDDkrmv3ZKE?start=66)
 
 # Installation
 
