@@ -49,14 +49,30 @@ Since the function can be scripted via the command line, one can make a script t
 
 The MATLAB function is relatively simple and so can be customized quite easily.
 
-# Compilation notes for Windows and OSX
+# Try the compiled version
+
+In between revision of this app, revision of the [liblsl-MATLAB](https://github.com/labstreaminglayer/liblsl-Matlab/releases) app which is MATLAB interface to different revisions of the LSL library [liblsl-MATLAB](https://github.com/sccn/liblsl/releases), things may get confusing and unstable. We recommend, you use the EEGLAB plugin manager to download this plugin (it should contains the correct dependencies), or try the compiled version in the release tab of this repository.
+
+# Compilation notes for Windows and Mac
 Make sure the program runs from the Matlab command line. You need to do that for all Matlab sessions as it adds important paths.
 
 Invoke the Matlab Compiler App. Click on the "App" tab and select "Application compiler." If this is not available for you, it means that you do not have the Matlab compiler installed.
 
-Add the function vis_stream_com.m (this function calls vis_stream.m but allows to set parameters on the command line for the compiled application). Manually add the library "liblsl-Matlab/bin/lsl.dll" (Windows) or sometimes "liblsl-Matlab/bin/lsl64.dll" depending on the liblsl-Matlab release (**warning**: it is not possible to use the liblsl-MATLAB released with this plugin in EEGLAB; instead use the release liblsl-MATLAB of neurofeedbacklab which does not contain lsl64.dll). For Mac the file to add is named "liblsl-Matlab/bin/liblsl64.dylib" -- note that when the zip file of liblsl-Matlab is uncompressed, this file may actually be a symbolic link to "liblsl64.1.13.0.dylib" and cannot be used for compilation purpose. If this is the case, simply remove the symbolic link, and copy liblsl64.1.13.0.dylib onto liblsl64.dylib. Compilation for Ubuntu has not been attempted but there is no reason it should not work.
+Add the function vis_stream_com.m (this function calls vis_stream.m but allows to set parameters on the command line for the compiled application). Manually add the library for Mac and Windows (see below). Compilation for Ubuntu has not been attempted but there is no reason it should not work.
 
 Press package. Test using the executable in "for_testing" folder. For example test using "vis_stream_comp.exe timerange 5" (setting a parameter bypasses the parameter GUI that sometimes create problems).
+
+## Compilation notes for Windows
+
+The library that compiles is the one at https://github.com/labstreaminglayer/liblsl-Matlab/releases/tag/v1.14.0 (liblsl-Matlab-1.14.0-Win_amd64_R2020b.zip). Manually add the library "liblsl-Matlab/bin/lsl.dll" (Windows).
+
+Using the library in the latest DLL from https://github.com/labstreaminglayer/App-LabRecorder/releases together with the MATLAB code from https://github.com/labstreaminglayer/liblsl-Matlab may not work (it may work on MATLAB but return an unknown error once compiled). Contrary to the Mac compilation, DO NOT USE THE liblsl-MATLAB released with this plugin on the EEGLAB plugin manager.
+
+## Compilation notes for MacOSx
+
+Use the liblsl-MATLAB released with this plugin on the EEGLAB plugin manager.
+
+For Mac the file to add is named "liblsl-Matlab/bin/libls.dylib" and "liblsl-Matlab/bin/libls.2.dylib." Note that some libraries are symbolic links. Symbolic links cannot be used and you will need to copy the files.
 
 # EEGLAB plugin release
 
