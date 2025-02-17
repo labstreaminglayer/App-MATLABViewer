@@ -20,7 +20,7 @@ The folder containing the LSL librairy should be name "liblsl-Matlab" (if it is 
 
 ## Compiled version installation
 
-Use the [prelease page](https://github.com/labstreaminglayer/App-MATLABViewer/releases) to download the version for Mac or Windows. These versions have been tested. However, due to the complexities of the dependencies and operating systems, if the latest release does not work for you, try the previous release.
+Use the [release page](https://github.com/labstreaminglayer/App-MATLABViewer/releases) to download the version for Mac or Windows. These versions have been tested. However, due to the complexities of the dependencies and operating systems, if the latest release does not work for you, try the previous release.
 
 # Usage
 
