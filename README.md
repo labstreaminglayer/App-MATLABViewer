@@ -6,11 +6,21 @@ The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the f
 
 [![Watch the demo](http://img.youtube.com/vi/tDDkrmv3ZKE/0.jpg)](https://www.youtube.com/embed/tDDkrmv3ZKE?start=66)
 
-# Installation for Mac and Windows
+# Installation
+
+## Installation within EEGLAB
+
+Use the EEGLAB plugin manager to install this plugin. It will contain all the required dependencies for Windows and for Mac.
+
+## Stand-alone MATLAB installation for Mac and Windows
 
 After cloning the project, get the latest LSL Matlab librairies from https://github.com/labstreaminglayer/liblsl-Matlab/releases/ (note that some releases only have Windows files while others have both Mac and Windows file). This project was successfully run with liblsl-Matlab-lsl1_14-MatlabR2020a-Win64-VS2017.zip (Windows) and liblsl1_13_0_b13-MatlabR2019a-MacOS10_14.zip (MacOS).
 
 The folder containing the LSL librairy should be name "liblsl-Matlab" (if it is not rename it) and should be placed inside this project (the path will then be automatically detected). Some releases of liblsl-Matlab do not contain a "bin" subfolders and should be avoided. The Matlab version that was used to compile "liblsl-Matlab" is not important and you may use different versions of Matlab to run the Matlab viewer.
+
+## Compiled version installation
+
+Use the release page to download the version for Mac or Windows. These versions have been tested. However, due to the complexities of the dependencies and operating systems, if the latest release does not work for you, try the previous release.
 
 # Usage
 
