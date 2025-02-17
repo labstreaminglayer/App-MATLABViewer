@@ -64,13 +64,13 @@ Press package. Test using the executable in "for_testing" folder. For example te
 
 ## Compilation notes for Windows
 
-The library that compiles is the one at https://github.com/labstreaminglayer/liblsl-Matlab/releases/tag/v1.14.0 (liblsl-Matlab-1.14.0-Win_amd64_R2020b.zip). Manually add the library "liblsl-Matlab/bin/lsl.dll" (Windows).
+The library that compiles is the one at https://github.com/labstreaminglayer/liblsl-Matlab/releases/tag/v1.14.0 (liblsl-Matlab-1.14.0-Win_amd64_R2020b.zip). Manually add the library "liblsl-Matlab/bin/lsl.dll" (Windows). This was successfully compiled on Windows 11 with MATLAB 2023b.
 
 Using the library in the latest DLL from https://github.com/labstreaminglayer/App-LabRecorder/releases together with the MATLAB code from https://github.com/labstreaminglayer/liblsl-Matlab may not work (it may work on MATLAB but return an unknown error once compiled). Contrary to the Mac compilation, DO NOT USE THE liblsl-MATLAB released with this plugin on the EEGLAB plugin manager.
 
 ## Compilation notes for MacOSx
 
-Use the liblsl-MATLAB released with this plugin on the EEGLAB plugin manager.
+Use the liblsl-MATLAB folder released with this plugin version 1.3 on the EEGLAB plugin manager. This was successfully compiled on OSx Sonoma with MATLAB 2024b.
 
 For Mac the file to add is named "liblsl-Matlab/bin/libls.dylib" and "liblsl-Matlab/bin/libls.2.dylib." Note that some libraries are symbolic links. Symbolic links cannot be used and you will need to copy the files.
 
