@@ -24,7 +24,7 @@ The folder containing the LSL librairy should be name "liblsl-Matlab" (if it is 
 
 ![screenshots/visstream-initial.png](screenshots/visstream-scroll.png)
 
-Most likely the graph scale is initially not quite right, so you probably want to resize the data by holding down either the cursor up (scale up) or cursor down (scale down) arrow.
+Most likely, the graph scale is initially not quite right, so you probably want to resize the data by holding down either the cursor up (scale up) or cursor down (scale down) arrow.
 
   * You can also adapt the time scale with the left/right cursor keys and if you have more channels than the ones that are displayed in one page, you can press page down or page up to flip through the channel pages. The number of channels per page and the initial range to display can be configured in the initial dialog.
 
@@ -72,7 +72,7 @@ Using the library in the latest DLL from https://github.com/labstreaminglayer/Ap
 
 Use the liblsl-MATLAB folder released with this plugin version 1.3 on the EEGLAB plugin manager. This was successfully compiled on OSx Sonoma with MATLAB 2024b.
 
-For Mac the file to add is named "liblsl-Matlab/bin/libls.dylib" and "liblsl-Matlab/bin/libls.2.dylib." Note that some libraries are symbolic links. Symbolic links cannot be used and you will need to copy the files.
+For Mac the file to add is named "liblsl-Matlab/bin/libls.dylib" and "liblsl-Matlab/bin/libls.2.dylib." Note that if you recompile the LSL libraries, some libraries are symbolic links. Symbolic links cannot be used for compiling and you will need to copy the original files.
 
 # EEGLAB plugin release
 
