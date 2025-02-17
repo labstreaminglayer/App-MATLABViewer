@@ -6,6 +6,8 @@ The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the f
 
 [![Watch the demo](http://img.youtube.com/vi/tDDkrmv3ZKE/0.jpg)](https://www.youtube.com/embed/tDDkrmv3ZKE?start=66)
 
+**Plugin moto:** it freaking works on both Windows and Mac (and if you're struggling with LSL, welcome).
+
 # Installation
 
 ## Installation within EEGLAB
