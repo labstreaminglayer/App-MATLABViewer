@@ -1,5 +1,7 @@
 # Overview
 
+This LSL viewer can be used with MATLAB, as well as EEGLAB, or it can be used without MATLAB in its compiled version. When used without MATLAB, you do not need a MATLAB license, as it is completely standalone.
+
 The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the full LSL distribution. It allows you to view the signal content of any stream on your lab network in real time. It is available under Matlab or in its compiled version. There is also an [alternative viewers](https://labstreaminglayer.readthedocs.io/info/viewers.html) available.
 
 [![Watch the demo](http://img.youtube.com/vi/tDDkrmv3ZKE/0.jpg)](https://www.youtube.com/embed/tDDkrmv3ZKE?start=66)
@@ -19,6 +21,7 @@ The folder containing the LSL librairy should be name "liblsl-Matlab" (if it is 
   * Now type `vis_stream` to bring up the viewer GUI; it should give you a window that looks like the following. If you don't have a stream online it will finish with an error message. If the program gets stuck or return an error, try instead setting parameters throught he command line to avoid having to use the graphic interfaces (which sometimes create problems). For example, type `vis_stream('timerange',5)`
 
 ![screenshots/visstream-gui.png](screenshots/visstream-gui2.png)
+(above is the interface when using within EEGLAB; it is grey when using the compiled version or when using the standalone MATLAB version)
 
   * Select the stream that you want to display. If you cannot see a stream that should be running (e.g., on another computer), read the Network Troubleshooting section on the NetworkConnectivity page. For a quick test, you might click OK right away to bring up the real-time view, or you might configure some of the display parameters first. Upon clicking okay you will get a window like the following:
 
