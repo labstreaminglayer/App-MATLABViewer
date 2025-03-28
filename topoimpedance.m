@@ -87,6 +87,9 @@ panel = uipanel('Title', 'Parameters', 'Position', [0.02 0.02 0.2 0.96]);
 % Threshold slider
 uicontrol('Parent', panel, 'Style', 'text', 'String', 'Threshold:', ...
     'Position', [10 500 100 20]);
+threshold_text = uicontrol('Parent', panel, 'Style', 'text', ...
+    'String', sprintf('%.2f', UI_PARAMS.threshold), ...
+    'Position', [120 500 40 20]);
 uicontrol('Parent', panel, 'Style', 'slider', ...
     'Position', [10 480 100 20], ...
     'Min', 0, 'Max', 1, 'Value', UI_PARAMS.threshold, ...
@@ -201,21 +204,21 @@ if ~isempty(Values)
         patch(circle_x, circle_y, diskcolor, 'EdgeColor', HEADCOLOR, ...
               'LineWidth', DISKBORDER);
         
-        % Add electrode label or value inside disk
-        if UI_PARAMS.show_labels
-            h = text(x(i),y(i),labels{i},'HorizontalAlignment','center',...
-                 'VerticalAlignment','middle','Color',HEADCOLOR,...
-                 'FontSize',EFSIZE);
-            set(h, 'UserData', 'label');
-        elseif UI_PARAMS.show_values
-            % Format value to 1 decimal place
-            value_str = sprintf('%.1f', Values(i));
-            h = text(x(i),y(i),value_str,...
-                 'HorizontalAlignment','center',...
-                 'VerticalAlignment','middle','Color',HEADCOLOR,...
-                 'FontSize',EFSIZE);
-            set(h, 'UserData', 'value');
-        end
+        % Add electrode label
+        h = text(x(i),y(i),labels{i},'HorizontalAlignment','center',...
+             'VerticalAlignment','middle','Color',HEADCOLOR,...
+             'FontSize',EFSIZE);
+        set(h, 'UserData', 'label');
+        set(h, 'Visible', UI_PARAMS.show_labels);
+        
+        % Add impedance value
+        value_str = sprintf('%.1f', Values(i));
+        h = text(x(i),y(i),value_str,...
+             'HorizontalAlignment','center',...
+             'VerticalAlignment','middle','Color',HEADCOLOR,...
+             'FontSize',EFSIZE);
+        set(h, 'UserData', 'value');
+        set(h, 'Visible', UI_PARAMS.show_values);
     end
 end
 
@@ -224,6 +227,10 @@ hold off
 % Callback functions
 function updateThreshold(source, ~)
     UI_PARAMS.threshold = source.Value;
+    % Update threshold text display
+    threshold_text = findobj(source.Parent, 'Style', 'text', 'Position', [120 500 40 20]);
+    set(threshold_text, 'String', sprintf('%.2f', UI_PARAMS.threshold));
+    
     % Update colors
     patches = findobj(ax, 'Type', 'patch');
     for i = 1:length(patches)
@@ -257,24 +264,16 @@ function toggleLabels(source, ~)
         values_checkbox = findobj(source.Parent, 'Style', 'checkbox', 'String', 'Show Values');
         set(values_checkbox, 'Value', 0);
         UI_PARAMS.show_values = false;
-        
-        % Hide all values and show all labels
-        text_objects = findobj(ax, 'Type', 'text');
-        for i = 1:length(text_objects)
-            if ~isempty(text_objects(i).UserData)
-                if strcmp(text_objects(i).UserData, 'label')
-                    text_objects(i).Visible = true;
-                elseif strcmp(text_objects(i).UserData, 'value')
-                    text_objects(i).Visible = false;
-                end
-            end
-        end
-    else
-        % If unchecking labels, hide all labels
-        text_objects = findobj(ax, 'Type', 'text');
-        for i = 1:length(text_objects)
-            if ~isempty(text_objects(i).UserData) && strcmp(text_objects(i).UserData, 'label')
-                text_objects(i).Visible = false;
+    end
+    
+    % Update labels visibility
+    text_objects = findobj(ax, 'Type', 'text');
+    for i = 1:length(text_objects)
+        if ~isempty(text_objects(i).UserData)
+            if strcmp(text_objects(i).UserData, 'label')
+                text_objects(i).Visible = UI_PARAMS.show_labels;
+            elseif strcmp(text_objects(i).UserData, 'value')
+                text_objects(i).Visible = UI_PARAMS.show_values;
             end
         end
     end
@@ -287,24 +286,16 @@ function toggleValues(source, ~)
         labels_checkbox = findobj(source.Parent, 'Style', 'checkbox', 'String', 'Show Labels');
         set(labels_checkbox, 'Value', 0);
         UI_PARAMS.show_labels = false;
-        
-        % Hide all labels and show all values
-        text_objects = findobj(ax, 'Type', 'text');
-        for i = 1:length(text_objects)
-            if ~isempty(text_objects(i).UserData)
-                if strcmp(text_objects(i).UserData, 'label')
-                    text_objects(i).Visible = false;
-                elseif strcmp(text_objects(i).UserData, 'value')
-                    text_objects(i).Visible = true;
-                end
-            end
-        end
-    else
-        % If unchecking values, hide all values
-        text_objects = findobj(ax, 'Type', 'text');
-        for i = 1:length(text_objects)
-            if ~isempty(text_objects(i).UserData) && strcmp(text_objects(i).UserData, 'value')
-                text_objects(i).Visible = false;
+    end
+    
+    % Update values visibility
+    text_objects = findobj(ax, 'Type', 'text');
+    for i = 1:length(text_objects)
+        if ~isempty(text_objects(i).UserData)
+            if strcmp(text_objects(i).UserData, 'label')
+                text_objects(i).Visible = UI_PARAMS.show_labels;
+            elseif strcmp(text_objects(i).UserData, 'value')
+                text_objects(i).Visible = UI_PARAMS.show_values;
             end
         end
     end
