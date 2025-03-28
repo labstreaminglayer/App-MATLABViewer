@@ -28,9 +28,16 @@ THRESHOLD = 0.5;        % threshold for red/green coloring
 EFSIZE = get(0,'DefaultAxesFontSize'); % use current default fontsize for electrode labels
 figHandle = [];
 
-% Parse remaining optional arguments
+% UI parameters
+UI_PARAMS = struct();
+UI_PARAMS.threshold = 0.5;
+UI_PARAMS.freq_center = 1000;  % Hz
+UI_PARAMS.freq_spread = 100;   % Hz
+UI_PARAMS.current = 100;       % nA
+UI_PARAMS.show_labels = true;
+UI_PARAMS.show_values = false;
 
-% Check if this is an update call
+% Parse remaining optional arguments
 if ~isempty(varargin)
     for i = 1:2:length(varargin)
         Param = varargin{i};
@@ -61,7 +68,7 @@ if ~isempty(figHandle)
     
     % Update colors based on new values
     for i = 1:length(patches)
-        if Values(i) > THRESHOLD
+        if Values(i) > UI_PARAMS.threshold
             set(patches(i), 'FaceColor', [1 0 0]);  % red for high impedance
         else
             set(patches(i), 'FaceColor', [0 1 0]);  % green for low impedance
@@ -69,6 +76,62 @@ if ~isempty(figHandle)
     end
     return;
 end
+
+% Create figure with UI panel
+fig = figure('Position', [100 100 800 600]);
+set(fig, 'Color', [0.94 0.94 0.94]);
+
+% Create UI panel
+panel = uipanel('Title', 'Parameters', 'Position', [0.02 0.02 0.2 0.96]);
+
+% Threshold slider
+uicontrol('Parent', panel, 'Style', 'text', 'String', 'Threshold:', ...
+    'Position', [10 500 100 20]);
+uicontrol('Parent', panel, 'Style', 'slider', ...
+    'Position', [10 480 100 20], ...
+    'Min', 0, 'Max', 1, 'Value', UI_PARAMS.threshold, ...
+    'Callback', @updateThreshold);
+
+% Frequency center
+uicontrol('Parent', panel, 'Style', 'text', 'String', 'Freq Center (Hz):', ...
+    'Position', [10 450 100 20]);
+uicontrol('Parent', panel, 'Style', 'edit', ...
+    'Position', [10 430 100 20], ...
+    'String', num2str(UI_PARAMS.freq_center), ...
+    'Callback', @updateFreqCenter);
+
+% Frequency spread
+uicontrol('Parent', panel, 'Style', 'text', 'String', 'Freq Spread (Hz):', ...
+    'Position', [10 400 100 20]);
+uicontrol('Parent', panel, 'Style', 'edit', ...
+    'Position', [10 380 100 20], ...
+    'String', num2str(UI_PARAMS.freq_spread), ...
+    'Callback', @updateFreqSpread);
+
+% Current
+uicontrol('Parent', panel, 'Style', 'text', 'String', 'Current (nA):', ...
+    'Position', [10 350 100 20]);
+uicontrol('Parent', panel, 'Style', 'edit', ...
+    'Position', [10 330 100 20], ...
+    'String', num2str(UI_PARAMS.current), ...
+    'Callback', @updateCurrent);
+
+% Show labels checkbox
+uicontrol('Parent', panel, 'Style', 'checkbox', ...
+    'Position', [10 300 100 20], ...
+    'String', 'Show Labels', ...
+    'Value', UI_PARAMS.show_labels, ...
+    'Callback', @toggleLabels);
+
+% Show values checkbox
+uicontrol('Parent', panel, 'Style', 'checkbox', ...
+    'Position', [10 270 100 20], ...
+    'String', 'Show Values', ...
+    'Value', UI_PARAMS.show_values, ...
+    'Callback', @toggleValues);
+
+% Create axes for the plot
+ax = axes('Position', [0.25 0.1 0.7 0.8]);
 
 % Read channel locations
 if ischar(loc_file) || isstruct(loc_file)
@@ -87,6 +150,7 @@ x = imag(allcoords);
 y = real(allcoords);
 
 % Set up the plot
+axes(ax);
 cla
 hold on
 % Add DISKSIZE to the limits to show full disks
@@ -127,7 +191,7 @@ if ~isempty(Values)
         circle_y = y(i) + DISKSIZE*sin(circ);
         
         % Choose color based on threshold
-        if Values(i) > THRESHOLD
+        if Values(i) > UI_PARAMS.threshold
             diskcolor = [1 0 0];  % red for high impedance
         else
             diskcolor = [0 1 0];  % green for low impedance
@@ -137,18 +201,113 @@ if ~isempty(Values)
         patch(circle_x, circle_y, diskcolor, 'EdgeColor', HEADCOLOR, ...
               'LineWidth', DISKBORDER);
         
-        % Add electrode label inside disk
-        if strcmp(ELECTRODES,'labels')
-            text(x(i),y(i),labels(i,:),'HorizontalAlignment','center',...
+        % Add electrode label or value inside disk
+        if UI_PARAMS.show_labels
+            h = text(x(i),y(i),labels{i},'HorizontalAlignment','center',...
                  'VerticalAlignment','middle','Color',HEADCOLOR,...
                  'FontSize',EFSIZE);
-        elseif strcmp(ELECTRODES,'numbers')
-            text(x(i),y(i),int2str(i),'HorizontalAlignment','center',...
+            set(h, 'UserData', 'label');
+        elseif UI_PARAMS.show_values
+            % Format value to 1 decimal place
+            value_str = sprintf('%.1f', Values(i));
+            h = text(x(i),y(i),value_str,...
+                 'HorizontalAlignment','center',...
                  'VerticalAlignment','middle','Color',HEADCOLOR,...
                  'FontSize',EFSIZE);
+            set(h, 'UserData', 'value');
         end
     end
 end
 
 hold off
+
+% Callback functions
+function updateThreshold(source, ~)
+    UI_PARAMS.threshold = source.Value;
+    % Update colors
+    patches = findobj(ax, 'Type', 'patch');
+    for i = 1:length(patches)
+        if Values(i) > UI_PARAMS.threshold
+            set(patches(i), 'FaceColor', [1 0 0]);
+        else
+            set(patches(i), 'FaceColor', [0 1 0]);
+        end
+    end
+end
+
+function updateFreqCenter(source, ~)
+    UI_PARAMS.freq_center = str2double(source.String);
+    % Add your frequency update logic here
+end
+
+function updateFreqSpread(source, ~)
+    UI_PARAMS.freq_spread = str2double(source.String);
+    % Add your frequency spread update logic here
+end
+
+function updateCurrent(source, ~)
+    UI_PARAMS.current = str2double(source.String);
+    % Add your current update logic here
+end
+
+function toggleLabels(source, ~)
+    UI_PARAMS.show_labels = source.Value;
+    if UI_PARAMS.show_labels
+        % Uncheck values checkbox
+        values_checkbox = findobj(source.Parent, 'Style', 'checkbox', 'String', 'Show Values');
+        set(values_checkbox, 'Value', 0);
+        UI_PARAMS.show_values = false;
+        
+        % Hide all values and show all labels
+        text_objects = findobj(ax, 'Type', 'text');
+        for i = 1:length(text_objects)
+            if ~isempty(text_objects(i).UserData)
+                if strcmp(text_objects(i).UserData, 'label')
+                    text_objects(i).Visible = true;
+                elseif strcmp(text_objects(i).UserData, 'value')
+                    text_objects(i).Visible = false;
+                end
+            end
+        end
+    else
+        % If unchecking labels, hide all labels
+        text_objects = findobj(ax, 'Type', 'text');
+        for i = 1:length(text_objects)
+            if ~isempty(text_objects(i).UserData) && strcmp(text_objects(i).UserData, 'label')
+                text_objects(i).Visible = false;
+            end
+        end
+    end
+end
+
+function toggleValues(source, ~)
+    UI_PARAMS.show_values = source.Value;
+    if UI_PARAMS.show_values
+        % Uncheck labels checkbox
+        labels_checkbox = findobj(source.Parent, 'Style', 'checkbox', 'String', 'Show Labels');
+        set(labels_checkbox, 'Value', 0);
+        UI_PARAMS.show_labels = false;
+        
+        % Hide all labels and show all values
+        text_objects = findobj(ax, 'Type', 'text');
+        for i = 1:length(text_objects)
+            if ~isempty(text_objects(i).UserData)
+                if strcmp(text_objects(i).UserData, 'label')
+                    text_objects(i).Visible = false;
+                elseif strcmp(text_objects(i).UserData, 'value')
+                    text_objects(i).Visible = true;
+                end
+            end
+        end
+    else
+        % If unchecking values, hide all values
+        text_objects = findobj(ax, 'Type', 'text');
+        for i = 1:length(text_objects)
+            if ~isempty(text_objects(i).UserData) && strcmp(text_objects(i).UserData, 'value')
+                text_objects(i).Visible = false;
+            end
+        end
+    end
+end
+
 end
