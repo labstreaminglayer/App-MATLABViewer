@@ -1,4 +1,4 @@
-function topoimpedance(Values, loc_file, varargin)
+function fig = topoimpedance(Values, loc_file, varargin)
 % topoimpedance() - plot electrode locations with impedance circles
 % Usage:
 %        >>  topoimpedance(impedance_values, EEG.chanlocs);
@@ -29,13 +29,16 @@ EFSIZE = get(0,'DefaultAxesFontSize'); % use current default fontsize for electr
 figHandle = [];
 
 % UI parameters
-UI_PARAMS = struct();
-UI_PARAMS.threshold = 0.5;
-UI_PARAMS.freq_center = 1000;  % Hz
-UI_PARAMS.freq_spread = 100;   % Hz
-UI_PARAMS.current = 100;       % nA
-UI_PARAMS.show_labels = true;
-UI_PARAMS.show_values = false;
+persistent UI_PARAMS;
+if isempty(UI_PARAMS)
+    UI_PARAMS = struct();
+    UI_PARAMS.threshold = 0.5;
+    UI_PARAMS.freq_center = 32.1;  % Hz
+    UI_PARAMS.freq_spread = 1;   % Hz
+    UI_PARAMS.current = 6;       % nA
+    UI_PARAMS.show_labels = true;
+    UI_PARAMS.show_values = false;
+end
 
 % Parse remaining optional arguments
 if ~isempty(varargin)
@@ -74,67 +77,80 @@ if ~isempty(figHandle)
             set(patches(i), 'FaceColor', [0 1 0]);  % green for low impedance
         end
     end
+    
+    % Update text visibility
+    text_objects = findobj(ax, 'Type', 'text');
+    for i = 1:length(text_objects)
+        if ~isempty(text_objects(i).UserData)
+            % check if values are visible and update them
+            if strcmp(text_objects(i).UserData, 'value')
+                text_objects(i).Visible = UI_PARAMS.show_values;
+                text_objects(i).String = sprintf('%.1f', Values((i+1)/2));
+            end
+        end
+    end
     return;
 end
 
 % Create figure with UI panel
-fig = figure('Position', [100 100 800 600]);
+fig = figure('Position', [100 100 900 600], 'MenuBar', 'none', 'ToolBar', 'none', 'Name', 'Impedance', 'NumberTitle', 'off');
 set(fig, 'Color', [0.94 0.94 0.94]);
 
 % Create UI panel
-panel = uipanel('Title', 'Parameters', 'Position', [0.02 0.02 0.2 0.96]);
+panel = uipanel('Title', 'Parameters', 'Position', [0.02 0.02 0.20 0.96]);
 
 % Threshold slider
 uicontrol('Parent', panel, 'Style', 'text', 'String', 'Threshold:', ...
-    'Position', [10 500 100 20]);
-threshold_text = uicontrol('Parent', panel, 'Style', 'text', ...
-    'String', sprintf('%.2f', UI_PARAMS.threshold), ...
-    'Position', [120 500 40 20]);
+    'Position', [10 530 150 20]);
 uicontrol('Parent', panel, 'Style', 'slider', ...
-    'Position', [10 480 100 20], ...
+    'Position', [10 510 150 20], ...
     'Min', 0, 'Max', 1, 'Value', UI_PARAMS.threshold, ...
     'Callback', @updateThreshold);
+threshold_text = uicontrol('Parent', panel, 'Style', 'edit', ...
+    'String', sprintf('%.2f', UI_PARAMS.threshold), ...
+    'Position', [10 490 150 20], ...
+    'Callback', @updateThresholdFromText);
 
 % Frequency center
 uicontrol('Parent', panel, 'Style', 'text', 'String', 'Freq Center (Hz):', ...
-    'Position', [10 450 100 20]);
+    'Position', [10 450 150 20]);
 uicontrol('Parent', panel, 'Style', 'edit', ...
-    'Position', [10 430 100 20], ...
+    'Position', [10 430 150 20], ...
     'String', num2str(UI_PARAMS.freq_center), ...
     'Callback', @updateFreqCenter);
 
 % Frequency spread
 uicontrol('Parent', panel, 'Style', 'text', 'String', 'Freq Spread (Hz):', ...
-    'Position', [10 400 100 20]);
+    'Position', [10 400 150 20]);
 uicontrol('Parent', panel, 'Style', 'edit', ...
-    'Position', [10 380 100 20], ...
+    'Position', [10 380 150 20], ...
     'String', num2str(UI_PARAMS.freq_spread), ...
     'Callback', @updateFreqSpread);
 
 % Current
 uicontrol('Parent', panel, 'Style', 'text', 'String', 'Current (nA):', ...
-    'Position', [10 350 100 20]);
+    'Position', [10 350 150 20]);
 uicontrol('Parent', panel, 'Style', 'edit', ...
-    'Position', [10 330 100 20], ...
+    'Position', [10 330 150 20], ...
     'String', num2str(UI_PARAMS.current), ...
     'Callback', @updateCurrent);
 
 % Show labels checkbox
 uicontrol('Parent', panel, 'Style', 'checkbox', ...
-    'Position', [10 300 100 20], ...
+    'Position', [10 300 150 20], ...
     'String', 'Show Labels', ...
     'Value', UI_PARAMS.show_labels, ...
     'Callback', @toggleLabels);
 
 % Show values checkbox
 uicontrol('Parent', panel, 'Style', 'checkbox', ...
-    'Position', [10 270 100 20], ...
+    'Position', [10 270 150 20], ...
     'String', 'Show Values', ...
     'Value', UI_PARAMS.show_values, ...
     'Callback', @toggleValues);
 
 % Create axes for the plot
-ax = axes('Position', [0.25 0.1 0.7 0.8]);
+ax = axes('Position', [0.3 0.1 0.65 0.8]);
 
 % Read channel locations
 if ischar(loc_file) || isstruct(loc_file)
@@ -228,8 +244,37 @@ hold off
 function updateThreshold(source, ~)
     UI_PARAMS.threshold = source.Value;
     % Update threshold text display
-    threshold_text = findobj(source.Parent, 'Style', 'text', 'Position', [120 500 40 20]);
+    threshold_text = findobj(source.Parent, 'Style', 'edit', 'Position', [10 490 150 20]);
     set(threshold_text, 'String', sprintf('%.2f', UI_PARAMS.threshold));
+    
+    % Update colors
+    patches = findobj(ax, 'Type', 'patch');
+    for i = 1:length(patches)
+        if Values(i) > UI_PARAMS.threshold
+            set(patches(i), 'FaceColor', [1 0 0]);
+        else
+            set(patches(i), 'FaceColor', [0 1 0]);
+        end
+    end
+end
+
+function updateThresholdFromText(source, ~)
+    % Get the new value from the text field
+    new_value = str2double(source.String);
+    
+    % Validate the input
+    if isnan(new_value) || new_value < 0 || new_value > 1
+        % If invalid, revert to previous value
+        set(source, 'String', sprintf('%.2f', UI_PARAMS.threshold));
+        return;
+    end
+    
+    % Update the threshold value
+    UI_PARAMS.threshold = new_value;
+    
+    % Update the slider
+    slider = findobj(source.Parent, 'Style', 'slider', 'Position', [10 510 150 20]);
+    set(slider, 'Value', new_value);
     
     % Update colors
     patches = findobj(ax, 'Type', 'patch');
