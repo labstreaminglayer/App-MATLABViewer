@@ -1,14 +1,28 @@
 # Overview
 
+This LSL viewer can be used with MATLAB, as well as EEGLAB, or it can be used without MATLAB in its compiled version. When used without MATLAB, you do not need a MATLAB license, as it is completely standalone.
+
 The MATLAB Viewer is a MATLAB function (vis\_stream) that is included with the full LSL distribution. It allows you to view the signal content of any stream on your lab network in real time. It is available under Matlab or in its compiled version. There is also an [alternative viewers](https://labstreaminglayer.readthedocs.io/info/viewers.html) available.
+
+**App moto:** it freaking works on both Windows and Mac (and if you're struggling with LSL, welcome).
 
 [![Watch the demo](http://img.youtube.com/vi/tDDkrmv3ZKE/0.jpg)](https://www.youtube.com/embed/tDDkrmv3ZKE?start=66)
 
-# Installation for Mac and Windows
+# Installation
+
+## Installation within EEGLAB
+
+Use the EEGLAB plugin manager to install this plugin. It will contain all the required dependencies for Windows and for Mac.
+
+## Stand-alone MATLAB installation for Mac and Windows
 
 After cloning the project, get the latest LSL Matlab librairies from https://github.com/labstreaminglayer/liblsl-Matlab/releases/ (note that some releases only have Windows files while others have both Mac and Windows file). This project was successfully run with liblsl-Matlab-lsl1_14-MatlabR2020a-Win64-VS2017.zip (Windows) and liblsl1_13_0_b13-MatlabR2019a-MacOS10_14.zip (MacOS).
 
 The folder containing the LSL librairy should be name "liblsl-Matlab" (if it is not rename it) and should be placed inside this project (the path will then be automatically detected). Some releases of liblsl-Matlab do not contain a "bin" subfolders and should be avoided. The Matlab version that was used to compile "liblsl-Matlab" is not important and you may use different versions of Matlab to run the Matlab viewer.
+
+## Compiled version installation
+
+Use the [release page](https://github.com/labstreaminglayer/App-MATLABViewer/releases) to download the version for Mac or Windows. These versions have been tested. However, due to the complexities of the dependencies and operating systems, if the latest release does not work for you, try the previous release.
 
 # Usage
 
@@ -20,11 +34,15 @@ The folder containing the LSL librairy should be name "liblsl-Matlab" (if it is 
 
 ![screenshots/visstream-gui.png](screenshots/visstream-gui2.png)
 
+(above is the interface when using within EEGLAB which has a blue background; it is grey otherwise)
+
   * Select the stream that you want to display. If you cannot see a stream that should be running (e.g., on another computer), read the Network Troubleshooting section on the NetworkConnectivity page. For a quick test, you might click OK right away to bring up the real-time view, or you might configure some of the display parameters first. Upon clicking okay you will get a window like the following:
 
 ![screenshots/visstream-initial.png](screenshots/visstream-scroll.png)
 
 Most likely, the graph scale is initially not quite right, so you probably want to resize the data by holding down either the cursor up (scale up) or cursor down (scale down) arrow.
+
+  * Click on individual channel traces to toggle the display on or off for a specific channel. This is useful when noisy channels obstruct the visibility of other channels.
 
   * You can also adapt the time scale with the left/right cursor keys and if you have more channels than the ones that are displayed in one page, you can press page down or page up to flip through the channel pages. The number of channels per page and the initial range to display can be configured in the initial dialog.
 
