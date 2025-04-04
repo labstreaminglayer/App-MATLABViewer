@@ -28,6 +28,12 @@ THRESHOLD = 0.5;        % threshold for red/green coloring
 EFSIZE = get(0,'DefaultAxesFontSize'); % use current default fontsize for electrode labels
 figHandle = [];
 
+% Make Values persistent for callback functions
+persistent CurrentValues;
+if nargin > 0
+    CurrentValues = Values;
+end
+
 % UI parameters
 persistent UI_PARAMS;
 if isempty(UI_PARAMS)
@@ -71,7 +77,7 @@ if ~isempty(figHandle)
     
     % Update colors based on new values
     for i = 1:length(patches)
-        if Values(i) > UI_PARAMS.threshold
+        if CurrentValues(i) > UI_PARAMS.threshold
             set(patches(i), 'FaceColor', [1 0 0]);  % red for high impedance
         else
             set(patches(i), 'FaceColor', [0 1 0]);  % green for low impedance
@@ -85,7 +91,7 @@ if ~isempty(figHandle)
             % check if values are visible and update them
             if strcmp(text_objects(i).UserData, 'value')
                 text_objects(i).Visible = UI_PARAMS.show_values;
-                text_objects(i).String = sprintf('%.1f', Values((i+1)/2));
+                text_objects(i).String = sprintf('%.1f', CurrentValues((i+1)/2));
             end
         end
     end
@@ -202,7 +208,7 @@ plot(EarX,EarY,'color',HEADCOLOR,'LineWidth',HLINEWIDTH);
 plot(-EarX,EarY,'color',HEADCOLOR,'LineWidth',HLINEWIDTH);
 
 % Plot impedance circles
-if ~isempty(Values)
+if ~isempty(CurrentValues)
     for i = 1:length(x)
         % Draw circle with constant size
         circ = linspace(0,2*pi,32);
@@ -210,7 +216,7 @@ if ~isempty(Values)
         circle_y = y(i) + DISKSIZE*sin(circ);
         
         % Choose color based on threshold
-        if Values(i) > UI_PARAMS.threshold
+        if CurrentValues(i) > UI_PARAMS.threshold
             diskcolor = [1 0 0];  % red for high impedance
         else
             diskcolor = [0 1 0];  % green for low impedance
@@ -228,7 +234,7 @@ if ~isempty(Values)
         set(h, 'Visible', UI_PARAMS.show_labels);
         
         % Add impedance value
-        value_str = sprintf('%.1f', Values(i));
+        value_str = sprintf('%.1f', CurrentValues(i));
         h = text(x(i),y(i),value_str,...
              'HorizontalAlignment','center',...
              'VerticalAlignment','middle','Color',HEADCOLOR,...
@@ -250,7 +256,7 @@ function updateThreshold(source, ~)
     % Update colors
     patches = findobj(ax, 'Type', 'patch');
     for i = 1:length(patches)
-        if Values(i) > UI_PARAMS.threshold
+        if CurrentValues(i) > UI_PARAMS.threshold
             set(patches(i), 'FaceColor', [1 0 0]);
         else
             set(patches(i), 'FaceColor', [0 1 0]);
@@ -279,7 +285,7 @@ function updateThresholdFromText(source, ~)
     % Update colors
     patches = findobj(ax, 'Type', 'patch');
     for i = 1:length(patches)
-        if Values(i) > UI_PARAMS.threshold
+        if CurrentValues(i) > UI_PARAMS.threshold
             set(patches(i), 'FaceColor', [1 0 0]);
         else
             set(patches(i), 'FaceColor', [0 1 0]);
