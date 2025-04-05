@@ -1,4 +1,4 @@
-function fig = topoimpedance(Values, loc_file, varargin)
+function figHandle = topoimpedance(Values, loc_file, varargin)
 % topoimpedance() - plot electrode locations with impedance circles
 % Usage:
 %        >>  topoimpedance(impedance_values, EEG.chanlocs);
@@ -29,21 +29,19 @@ EFSIZE = get(0,'DefaultAxesFontSize'); % use current default fontsize for electr
 figHandle = [];
 
 % Make Values persistent for callback functions
-persistent CurrentValues;
-if nargin > 0
-    CurrentValues = Values;
-end
+persistent CurrentImpedances;
+persistent ax;
 
 % UI parameters
 persistent UI_PARAMS;
 if isempty(UI_PARAMS)
     UI_PARAMS = struct();
-    UI_PARAMS.threshold = 0.5;
+    UI_PARAMS.threshold = 15;
     UI_PARAMS.freq_center = 32.1;  % Hz
-    UI_PARAMS.freq_spread = 1;   % Hz
+    UI_PARAMS.freq_spread = 3;   % Hz
     UI_PARAMS.current = 6;       % nA
-    UI_PARAMS.show_labels = true;
-    UI_PARAMS.show_values = false;
+    UI_PARAMS.show_labels = false;
+    UI_PARAMS.show_values = true;
 end
 
 % Parse remaining optional arguments
@@ -66,41 +64,80 @@ if ~isempty(varargin)
     end
 end
 
-% If this is an update call, just update the disk colors
-if ~isempty(figHandle)
-    if ~ishandle(figHandle)
-        error('Invalid figure handle provided for update');
-    end
-    figure(figHandle);
-    ax = gca;
-    patches = findobj(ax, 'Type', 'patch');
-    
-    % Update colors based on new values
-    for i = 1:length(patches)
-        if CurrentValues(i) > UI_PARAMS.threshold
-            set(patches(i), 'FaceColor', [1 0 0]);  % red for high impedance
-        else
-            set(patches(i), 'FaceColor', [0 1 0]);  % green for low impedance
+if isstruct(Values)
+    % compute tapered FFT
+    filtered_data = GenericButterBand(UI_PARAMS.freq_center - UI_PARAMS.freq_spread/2, ...
+                                      UI_PARAMS.freq_center + UI_PARAMS.freq_spread/2, ...
+                                        Values.srate, Values.data');
+    rms_val = sqrt(mean(filtered_data.^2)); % Calculate RMS
+    z_calc = (1e-6 * rms_val * sqrt(2) / (UI_PARAMS.current * 1e-9))/10; % - 2200;
+    CurrentImpedances = z_calc/1000; % kOhm
+    if 0
+        chanlocs = readlocs(loc_file);
+        for chanIndex = 1:length(CurrentImpedances)
+            fprintf('Channel %s: %1.1f kOhm\n', chanlocs(chanIndex).labels, CurrentImpedances(chanIndex));
         end
+        fprintf('\n');
     end
-    
-    % Update text visibility
-    text_objects = findobj(ax, 'Type', 'text');
-    for i = 1:length(text_objects)
-        if ~isempty(text_objects(i).UserData)
-            % check if values are visible and update them
-            if strcmp(text_objects(i).UserData, 'value')
-                text_objects(i).Visible = UI_PARAMS.show_values;
-                text_objects(i).String = sprintf('%.1f', CurrentValues((i+1)/2));
+
+    CurrentImpedances = CurrentImpedances(end:-1:1);
+    % z_out = max(0, z_calc);     % Return 0 if calculated z is negative                                      
+
+    if 0
+        tapered_data = bsxfun(@times, Values.data', hanning(size(Values.data, 2)));
+        fft_data = fft(tapered_data);
+        fft_data = fft_data(1:end/2+1, :);
+        fft_data = abs(fft_data).^2;
+        fft_data = fft_data / size(fft_data, 1);
+        freqs = linspace(0, Values.srate/2, size(fft_data, 1));
+        freqs_indices = find(freqs >= UI_PARAMS.freq_center - UI_PARAMS.freq_spread/2 & freqs <= UI_PARAMS.freq_center + UI_PARAMS.freq_spread/2);
+        power = fft_data(freqs_indices, :);
+        for freqIndex = 1:length(freqs_indices)
+            fprintf('Frequency %2.1f: ', freqs(freqs_indices(freqIndex)));
+            for chanIndex = 1:size(power, 2)
+                fprintf('%1.1f ', power(freqIndex, chanIndex));
+            end
+            fprintf('\n');
+        end
+        fprintf('\n');
+    end
+end
+
+% If this is an update call, just update the disk colors
+if ~isempty(figHandle) 
+    if ishandle(ax)
+        patches = findobj(ax, 'Type', 'patch');
+        
+        % Update colors based on new values
+        for i = 1:length(patches)
+            if CurrentImpedances(i) > UI_PARAMS.threshold
+                set(patches(i), 'FaceColor', [1 0 0]);  % red for high impedance
+            else
+                set(patches(i), 'FaceColor', [0 1 0]);  % green for low impedance
             end
         end
+        
+        % Update text visibility
+        text_objects = findobj(ax, 'Type', 'text');
+        for i = 1:length(text_objects)
+            if ~isempty(text_objects(i).UserData)
+                % check if values are visible and update them
+                if strcmp(text_objects(i).UserData, 'value')
+                    text_objects(i).Visible = UI_PARAMS.show_values;
+                    text_objects(i).String = sprintf('%.1f', CurrentImpedances((i+1)/2));
+                end
+            end
+        end
+    else
+        figHandle = [];
     end
-    return;
+    return; % if ax is empty, the figure has been closed
 end
 
 % Create figure with UI panel
-fig = figure('Position', [100 100 900 600], 'MenuBar', 'none', 'ToolBar', 'none', 'Name', 'Impedance', 'NumberTitle', 'off');
-set(fig, 'Color', [0.94 0.94 0.94]);
+figHandle = figure('Position', [100 100 900 600], 'MenuBar', 'none', 'ToolBar', 'none', 'Name', 'Impedance', 'NumberTitle', 'off', ...
+                     'CloseRequestFcn', 'delete(gcbf); clear topoimpedance;');
+set(figHandle, 'Color', [0.94 0.94 0.94]);
 
 % Create UI panel
 panel = uipanel('Title', 'Parameters', 'Position', [0.02 0.02 0.20 0.96]);
@@ -110,20 +147,20 @@ uicontrol('Parent', panel, 'Style', 'text', 'String', 'Threshold:', ...
     'Position', [10 530 150 20]);
 uicontrol('Parent', panel, 'Style', 'slider', ...
     'Position', [10 510 150 20], ...
-    'Min', 0, 'Max', 1, 'Value', UI_PARAMS.threshold, ...
+    'Min', 0, 'Max', 50, 'Value', UI_PARAMS.threshold, ...
     'Callback', @updateThreshold);
 threshold_text = uicontrol('Parent', panel, 'Style', 'edit', ...
     'String', sprintf('%.2f', UI_PARAMS.threshold), ...
     'Position', [10 490 150 20], ...
-    'Callback', @updateThresholdFromText);
+    'Callback', @updateThresholdFromText, 'enable', 'off');
 
 % Frequency center
 uicontrol('Parent', panel, 'Style', 'text', 'String', 'Freq Center (Hz):', ...
-    'Position', [10 450 150 20]);
+    'Position', [10 450 150 20], 'enable', 'off');
 uicontrol('Parent', panel, 'Style', 'edit', ...
     'Position', [10 430 150 20], ...
     'String', num2str(UI_PARAMS.freq_center), ...
-    'Callback', @updateFreqCenter);
+    'Callback', @updateFreqCenter, 'enable', 'off');
 
 % Frequency spread
 uicontrol('Parent', panel, 'Style', 'text', 'String', 'Freq Spread (Hz):', ...
@@ -131,7 +168,7 @@ uicontrol('Parent', panel, 'Style', 'text', 'String', 'Freq Spread (Hz):', ...
 uicontrol('Parent', panel, 'Style', 'edit', ...
     'Position', [10 380 150 20], ...
     'String', num2str(UI_PARAMS.freq_spread), ...
-    'Callback', @updateFreqSpread);
+    'Callback', @updateFreqSpread, 'enable', 'off');
 
 % Current
 uicontrol('Parent', panel, 'Style', 'text', 'String', 'Current (nA):', ...
@@ -139,7 +176,7 @@ uicontrol('Parent', panel, 'Style', 'text', 'String', 'Current (nA):', ...
 uicontrol('Parent', panel, 'Style', 'edit', ...
     'Position', [10 330 150 20], ...
     'String', num2str(UI_PARAMS.current), ...
-    'Callback', @updateCurrent);
+    'Callback', @updateCurrent, 'enable', 'off');
 
 % Show labels checkbox
 uicontrol('Parent', panel, 'Style', 'checkbox', ...
@@ -171,7 +208,7 @@ Th = pi/180*Th;
 
 % Apply default -90 degree rotation to match topoplot.m
 allcoords = (y + x*sqrt(-1))*exp(-sqrt(-1)*pi/2);
-x = imag(allcoords);
+x = -imag(allcoords);
 y = real(allcoords);
 
 % Set up the plot
@@ -208,7 +245,7 @@ plot(EarX,EarY,'color',HEADCOLOR,'LineWidth',HLINEWIDTH);
 plot(-EarX,EarY,'color',HEADCOLOR,'LineWidth',HLINEWIDTH);
 
 % Plot impedance circles
-if ~isempty(CurrentValues)
+if ~isempty(CurrentImpedances)
     for i = 1:length(x)
         % Draw circle with constant size
         circ = linspace(0,2*pi,32);
@@ -216,7 +253,7 @@ if ~isempty(CurrentValues)
         circle_y = y(i) + DISKSIZE*sin(circ);
         
         % Choose color based on threshold
-        if CurrentValues(i) > UI_PARAMS.threshold
+        if CurrentImpedances(i) > UI_PARAMS.threshold
             diskcolor = [1 0 0];  % red for high impedance
         else
             diskcolor = [0 1 0];  % green for low impedance
@@ -234,7 +271,7 @@ if ~isempty(CurrentValues)
         set(h, 'Visible', UI_PARAMS.show_labels);
         
         % Add impedance value
-        value_str = sprintf('%.1f', CurrentValues(i));
+        value_str = sprintf('%.1f', CurrentImpedances(i));
         h = text(x(i),y(i),value_str,...
              'HorizontalAlignment','center',...
              'VerticalAlignment','middle','Color',HEADCOLOR,...
@@ -256,7 +293,7 @@ function updateThreshold(source, ~)
     % Update colors
     patches = findobj(ax, 'Type', 'patch');
     for i = 1:length(patches)
-        if CurrentValues(i) > UI_PARAMS.threshold
+        if CurrentImpedances(i) > UI_PARAMS.threshold
             set(patches(i), 'FaceColor', [1 0 0]);
         else
             set(patches(i), 'FaceColor', [0 1 0]);
@@ -285,7 +322,7 @@ function updateThresholdFromText(source, ~)
     % Update colors
     patches = findobj(ax, 'Type', 'patch');
     for i = 1:length(patches)
-        if CurrentValues(i) > UI_PARAMS.threshold
+        if CurrentImpedances(i) > UI_PARAMS.threshold
             set(patches(i), 'FaceColor', [1 0 0]);
         else
             set(patches(i), 'FaceColor', [0 1 0]);

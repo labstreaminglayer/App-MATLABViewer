@@ -101,7 +101,7 @@ opts = arg_define(varargin, ...
     arg({'streamname','StreamName'},streamnames{1},streamnames,'LSL stream that should be displayed. The name of the stream that you would like to display.'), ...
     arg({'timerange','TimeRange'},5,[0 Inf],'Initial time range in seconds. The time range of the display window; can be changed with keyboard shortcuts (see help).'), ...
     arg({'rmsrange','RMSRange'},1,[0 Inf],'RMS time range in seconds.'), ...
-    arg({'datascale','DataScale'},150,[0 Inf],'Initial scale of the data. The scale of the data, in units between horizontal lines; can be changed with keyboard shortcuts (see help).'), ...
+    arg({'datascale','DataScale'},10000,[0 Inf],'Initial scale of the data. The scale of the data, in units between horizontal lines; can be changed with keyboard shortcuts (see help).'), ...
     arg({'channelrange','ChannelRange'},1:32,uint32([1 1000000]),'Channels to display. The channel range to display.'), ...
     arg({'subsample','SubSample'},1,[0 Inf],'Subsample for fast plotting (1=none).'), ...
     arg({'refreshrate','RefreshRate'},10,[0 Inf],'Display refresh rate in Hz. This is the rate at which the graphics are updated.'), ...
@@ -112,18 +112,33 @@ opts = arg_define(varargin, ...
     arg({'rms','RMS'},true,[],'Show RMS for each channel.'), ...
     arg({'zeromean','ZeroMean'},true,[],'Zero-mean data.'), ...
     arg({'recordbut','RecordButton'},true,[],'Show Record button.'), ...
+    arg({'impedancebut','ImpedanceButton'},true,[],'Show Impedance button.'), ...
     arg_nogui({'maskchans','MaskChans'},[],[0 Inf],'Channels to mask.'), ...
     arg_nogui({'bufferrange','BufferRange'},10,[0 Inf],'Maximum time range to buffer. Imposes an upper limit on what can be displayed.'), ...
     arg_nogui({'samplingrate','SamplingRate'},128,[0 Inf],'Sampling rate for display. This is the sampling rate that is used for plotting; for faster drawing. Deprecated.'), ...
     arg_nogui({'parent_fig','ParentFigure'},[],[],'Parent figure handle.'), ...
     arg_nogui({'parent_ax','ParentAxes'},[],[],'Parent axis handle.'), ...    
     arg_nogui({'pageoffset','PageOffset'},0,uint32([0 100]),'Channel page offset. Allows to flip forward or backward pagewise through the displayed channels.'), ...
-    arg_nogui({'position','Position'},[],[],'Figure position. Allows to script the position at which the figures should appear.','shape','row'));
+    arg_nogui({'position','Position'},[],[],'Figure position. Allows to script the position at which the figures should appear.','shape','row'), ...
+    arg_nogui({'locfile','LocFile'},'cyton8.locs',[],'Location file. The location file to use for the display.'));
 
 if ~isempty(varargin)
     % create stream inlet, figure and stream buffer
     inlet = create_inlet(lib,opts);
     stream = create_streambuffer(opts,inlet.info()); 
+    if ~isempty(opts.locfile) 
+        if exist('readlocs','file')
+            chanlocs = readlocs(opts.locfile);
+            % check if the length of the chanlocs is the same as the number of channels in the stream
+            if length(chanlocs) ~= length(stream.chanlocs)
+                fprintf(2, 'The location file does not have the same number of channels as the stream. Ignoring location file.\n');
+            else
+                stream.chanlocs = chanlocs;
+            end
+        else
+            fprintf(2, 'Add EEGLAB to your path to use location files.\n');
+        end
+    end
     stateAsr = [];
 
     [fig,axrms,ax,lines] = create_figure(opts,@on_key,@on_close);
@@ -148,22 +163,43 @@ if ~isempty(varargin)
     
     %scale
     hh = 0.94;
+    hh2 = 0.88;  % Second row of buttons
     offset = 0.09;
     cb_stream = '';
     streamnames2 = cellfun(@(x)[x ' stream'], streamnames, 'uniformoutput', false);
+    opt.impedance_callback = 'topo';
+
+    % First row of controls
+    valFilter = 1;
+    strFilter = { 'No filter' 'LP 45 Hz' 'BP 0.5-45Hz' 'BP 2-30Hz' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
     opts.streamui = uicontrol('unit', 'normalized', 'position', [0.02 hh 0.15 0.05], 'style', 'popupmenu', 'string', streamnames2, 'callback', cb_stream);
-    uicontrol('unit', 'normalized', 'position', [0.09+offset hh-0.01 0.08 0.05], 'style', 'text', 'string', 'scale:');
-    uicontrol('unit', 'normalized', 'position', [0.22+offset hh-0.01 0.08 0.05], 'style', 'text', 'string', 'uV');
-    opts.scaleui  = uicontrol('unit', 'normalized', 'position', [0.16+offset hh 0.08 0.05], 'style', 'edit', 'tag', 'scaleui', 'string', num2str(opts.datascale), 'userdata', opts.maskchans);
+    uicontrol('unit', 'normalized', 'position', [0.19 hh-0.01 0.08 0.05], 'style', 'text', 'string', 'scale:');
+    uicontrol('unit', 'normalized', 'position', [0.32 hh-0.01 0.08 0.05], 'style', 'text', 'string', 'uV');
+    opts.scaleui  = uicontrol('unit', 'normalized', 'position', [0.26 hh-0.005 0.08 0.05], 'style', 'edit', 'tag', 'scaleui', 'string', num2str(opts.datascale), 'userdata', opts.maskchans);
+    opts.filterui = uicontrol('unit', 'normalized', 'position', [0.42 hh 0.18 0.05], 'style', 'popupmenu', 'string', strFilter, 'value', valFilter);
+
+    % Second row of controls
+    opts.rerefui  = uicontrol('unit', 'normalized', 'position', [0.02 hh2 0.15 0.05], 'style', 'checkbox', 'string', 'Average Ref.', 'value', opts.reref);
+    opts.normui   = uicontrol('unit', 'normalized', 'position', [0.19 hh2 0.11 0.05], 'style', 'checkbox', 'string', 'Normalize', 'value', opts.standardize);
+    opts.zeroui   = uicontrol('unit', 'normalized', 'position', [0.32 hh2 0.22 0.05], 'style', 'checkbox', 'string', 'Zero mean', 'value', opts.zeromean);
     
-    % record button
+    % Record button (if enabled)
+    if opts.impedancebut
+        cb_impedance = [   'if isequal(get(gcbo, ''string''), ''Check Impedance''),' ...
+                        '    set(gcbo, ''string'', ''Hide Impedance'');' ...
+                        'else,' ...
+                        '    set(gcbo, ''string'', ''Check Impedance'');' ...
+                        '    try, delete(get(gcbo, ''userdata'')); set(gcbo, ''userdata'', []); catch, end;' ...
+                        'end;' ];
+        opts.impedanceui = uicontrol('unit', 'normalized', 'position', [0.62 hh 0.22 0.05], 'style', 'pushbutton', 'string', 'Check Impedance', 'callback', cb_impedance, 'userdata', []);
+    end
     if opts.recordbut
         cb_record = [   'if isequal(get(gcbo, ''string''), ''Record''),' ...
-                        '    set(gcbo, ''string'', ''Stop'');' ...
+                        '    set(gcbo, ''string'', ''Stop'', ''backgroundcolor'', [1 1 1]);' ...
                         '    warndlg([ ''Your RAM should be able to hold the entire data.'' 10 ''When you press stop, you will be prompted to save the data.'' ]);' ...
                         '    EEG = [];' ...
                         'else,' ...
-                        '    set(gcbo, ''string'', ''Record'');' ...
+                        '    set(gcbo, ''string'', ''Record'', ''backgroundcolor'', [1 0.5 0.5]);' ...
                         '    EEG.data = [ EEG.data{:} ];' ...
                         '    EEG.trials = 1;' ...
                         '    EEG.pnts   = size(EEG.data,2);' ...
@@ -180,12 +216,10 @@ if ~isempty(varargin)
                         '    end;' ...
                         '    clear filenametmp, filepathtmp;' ...
                         'end;' ];
-        opts.recordui  = uicontrol('unit', 'normalized', 'position', [0.87 0.05 0.10 0.10], 'style', 'pushbutton', 'string', 'Record', 'callback', cb_record, 'userdata', 0);
+        opts.recordui  = uicontrol('unit', 'normalized', 'position', [0.87 hh 0.10 0.05], 'backgroundcolor', [1 0.5 0.5], 'style', 'pushbutton', 'string', 'Record', 'callback', cb_record, 'userdata', 0);
     end
     
     % optionally design a frequency filter
-    valFilter = 1;
-    strFilter = { 'No filter' 'LP 45 Hz' 'BP 0.5-45Hz' 'BP 2-30Hz' 'BP 2-45Hz' 'BP 5-45Hz' 'BP 15-45Hz' 'BP 7-13Hz' };
     allBs = { [] };
     fprintf('Stream sampling rate: %f\n', stream.srate);
     fprintf(2,'Click on the channel traces to toggle them on or off.\n');
@@ -212,22 +246,8 @@ if ~isempty(varargin)
             error('The FIR filter must be given as 4 frequencies in Hz [raise-start,raise-stop,fall-start,fall-stop] or moving-average length in samples.');
         end
     end
-    opts.filterui = uicontrol('unit', 'normalized', 'position', [0.30+offset hh 0.18 0.05], 'style', 'popupmenu', 'string', strFilter, 'value', valFilter);
+    opts.filterui = uicontrol('unit', 'normalized', 'position', [0.42 hh 0.18 0.05], 'style', 'popupmenu', 'string', strFilter, 'value', valFilter);
     
-    % other options
-    opts.rerefui  = uicontrol('unit', 'normalized', 'position', [0.48+offset hh 0.15 0.05], 'style', 'checkbox', 'string', 'Ave Ref', 'value', opts.reref);
-    opts.normui   = uicontrol('unit', 'normalized', 'position', [0.61+offset hh 0.11 0.05], 'style', 'checkbox', 'string', 'Norm.', 'value', opts.standardize);
-    opts.zeroui   = uicontrol('unit', 'normalized', 'position', [0.73+offset hh 0.22 0.05], 'style', 'checkbox', 'string', 'Zero mean', 'value', opts.zeromean);
-    
-    % filtering UI
-%     B50 = design_bandpass(opts.freqfilter,stream.srate,20,true);
-%     valGui
-%     if ~isempty(opts.notch)
-%         if opts.notch == 50, valGui = 2; end
-%         if opts.notch == 60, valGui = 3; end
-%     end
-%    opts.notchfilterui  = uicontrol('unit', 'normalized', 'position', [0.25 0.945 0.18 0.05], 'style', 'popupmenu', 'string', { 'No notch' 'Notch 50Hz' 'Notch 60Hz' }, 'value', valGui, 'userdata', );
-
     % start a timer that reads from LSL and updates the display
     th = timer('TimerFcn',@on_timer,'Period',1.0/opts.refreshrate,'ExecutionMode','fixedRate');
     start(th);
@@ -308,6 +328,24 @@ end
             stream.xmin = stream.xmax - (samples_to_get-1)/stream.srate;
 
             % save as EEG dataset
+            if opts.impedancebut
+                if strcmp(get(opts.impedanceui, 'string'), 'Hide Impedance')
+                    impedance_fig = get(opts.impedanceui, 'userdata');
+                    if isempty(impedance_fig)
+                        impedance_fig = topoimpedance(stream, stream.chanlocs);
+                    else
+                        impedance_fig = topoimpedance(stream, stream.chanlocs, 'update', impedance_fig);
+                    end
+                    if isempty(impedance_fig)
+                        set(opts.impedanceui, 'userdata', []);
+                        set(opts.impedanceui, 'string', 'Check Impedance');
+                    else
+                        set(opts.impedanceui, 'userdata', impedance_fig);
+                    end
+                    figure(fig);
+                end
+            end
+
             if opts.recordbut
 
                 if currentlyRecording
@@ -449,6 +487,7 @@ end
     % close figure, timer and stream
     function on_close(varargin)
         try
+            try delete(get(opts.impedanceui, 'userdata')); catch, end;
             delete(fig);
             stop(th);
             delete(th);
@@ -479,9 +518,9 @@ function [fig,axrms,ax,lines] = create_figure(opts,on_key,on_close)
             fig = opts.parent_fig;
         end
         if opts.rms
-            axrms = axes('Parent',fig, 'YAxisLocation', 'right', 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150]);
+            axrms = axes('Parent',fig, 'YAxisLocation', 'right', 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.7450]);
         end
-        ax    = axes('Parent',fig, 'unit', 'normalized', 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.8150], 'visible', 'on');
+        ax    = axes('Parent',fig, 'unit', 'normalized', 'YDir','normal', 'position', [0.1300    0.1100    0.7050    0.7450], 'visible', 'on');
     else
         ax = opts.parent_ax;
     end       
