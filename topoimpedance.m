@@ -36,7 +36,7 @@ persistent ax;
 persistent UI_PARAMS;
 if isempty(UI_PARAMS)
     UI_PARAMS = struct();
-    UI_PARAMS.threshold = 15;
+    UI_PARAMS.threshold = 150;
     UI_PARAMS.freq_center = 32.1;  % Hz
     UI_PARAMS.freq_spread = 3;   % Hz
     UI_PARAMS.current = 6;       % nA
@@ -70,8 +70,10 @@ if isstruct(Values)
                                       UI_PARAMS.freq_center + UI_PARAMS.freq_spread/2, ...
                                         Values.srate, Values.data');
     rms_val = sqrt(mean(filtered_data.^2)); % Calculate RMS
-    z_calc = (1e-6 * rms_val * sqrt(2) / (UI_PARAMS.current * 1e-9))/10; % - 2200;
-    CurrentImpedances = z_calc/1000; % kOhm
+    z_calc = (1e-6 * rms_val * sqrt(2) / (UI_PARAMS.current * 1e-9)) - 2200; % formula from https://openbci-stream.readthedocs.io/en/latest/notebooks/A2-electrodes_impedance.html 
+    z_calc = max(z_calc, 0);
+    CurrentImpedances = z_calc/1000; % kOhm instead of Ohm
+
     if 0
         chanlocs = readlocs(loc_file);
         for chanIndex = 1:length(CurrentImpedances)
@@ -147,7 +149,7 @@ uicontrol('Parent', panel, 'Style', 'text', 'String', 'Threshold:', ...
     'Position', [10 530 150 20]);
 uicontrol('Parent', panel, 'Style', 'slider', ...
     'Position', [10 510 150 20], ...
-    'Min', 0, 'Max', 50, 'Value', UI_PARAMS.threshold, ...
+    'Min', 0, 'Max', 1000, 'Value', UI_PARAMS.threshold, ...
     'Callback', @updateThreshold);
 threshold_text = uicontrol('Parent', panel, 'Style', 'edit', ...
     'String', sprintf('%.2f', UI_PARAMS.threshold), ...

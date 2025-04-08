@@ -120,7 +120,7 @@ opts = arg_define(varargin, ...
     arg_nogui({'parent_ax','ParentAxes'},[],[],'Parent axis handle.'), ...    
     arg_nogui({'pageoffset','PageOffset'},0,uint32([0 100]),'Channel page offset. Allows to flip forward or backward pagewise through the displayed channels.'), ...
     arg_nogui({'position','Position'},[],[],'Figure position. Allows to script the position at which the figures should appear.','shape','row'), ...
-    arg_nogui({'locfile','LocFile'},'cyton8.locs',[],'Location file. The location file to use for the display.'));
+    arg_nogui({'locfile','LocFile'},'lookup',[],'Location file. The location file to use for the display.'));
 
 if ~isempty(varargin)
     % create stream inlet, figure and stream buffer
@@ -128,12 +128,31 @@ if ~isempty(varargin)
     stream = create_streambuffer(opts,inlet.info()); 
     if ~isempty(opts.locfile) 
         if exist('readlocs','file')
-            chanlocs = readlocs(opts.locfile);
-            % check if the length of the chanlocs is the same as the number of channels in the stream
-            if length(chanlocs) ~= length(stream.chanlocs)
-                fprintf(2, 'The location file does not have the same number of channels as the stream. Ignoring location file.\n');
+            if isequal(opts.locfile, 'lookup')
+                tmplocs = readlocs('Standard-10-5-Cap385_witheog.elp');
+                for iLoc = 1:length(stream.chanlocs)
+                    indLoc = strmatch(lower(stream.chanlocs(iLoc).labels), lower({tmplocs.labels}), 'exact');
+                    if ~isempty(indLoc)
+                        stream.chanlocs(iLoc).theta  = tmplocs(indLoc(1)).theta;
+                        stream.chanlocs(iLoc).radius = tmplocs(indLoc(1)).radius;
+                        stream.chanlocs(iLoc).X      = tmplocs(indLoc(1)).X;
+                        stream.chanlocs(iLoc).Y      = tmplocs(indLoc(1)).Y;
+                        stream.chanlocs(iLoc).Z      = tmplocs(indLoc(1)).Z;
+                        stream.chanlocs(iLoc).sph_theta  = tmplocs(indLoc(1)).sph_theta;
+                        stream.chanlocs(iLoc).sph_phi    = tmplocs(indLoc(1)).sph_phi;
+                        stream.chanlocs(iLoc).sph_radius = tmplocs(indLoc(1)).sph_radius;
+                    else
+                        fprintf('Channel lookup: no location for %s\n', stream.chanlocs(iLoc).labels);
+                    end
+                end
             else
-                stream.chanlocs = chanlocs;
+                chanlocs = readlocs(opts.locfile);
+                % check if the length of the chanlocs is the same as the number of channels in the stream
+                if length(chanlocs) ~= length(stream.chanlocs)
+                    fprintf(2, 'The location file does not have the same number of channels as the stream. Ignoring location file.\n');
+                else
+                    stream.chanlocs = chanlocs;
+                end
             end
         else
             fprintf(2, 'Add EEGLAB to your path to use location files.\n');
