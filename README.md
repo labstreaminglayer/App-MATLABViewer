@@ -76,7 +76,7 @@ Make sure the program runs from the Matlab command line. You need to do that for
 
 Invoke the Matlab Compiler App. Click on the "App" tab and select "Application compiler." If this is not available for you, it means that you do not have the Matlab compiler installed.
 
-Add the function vis_stream_com.m (this function calls vis_stream.m but allows to set parameters on the command line for the compiled application). Manually add the library for Mac and Windows (see below). Compilation for Ubuntu has not been attempted but there is no reason it should not work.
+Add the function vis_stream_com.m (this function calls vis_stream.m but allows to set parameters on the command line for the compiled application). Manually add the library for Mac and Windows (see below). Compilation for Ubuntu has not been attempted but there is no reason it should not work. Add the file **"Standard-10-5-Cap385_witheog.elp"** to both the list of functions and the list of data files.
 
 Press package. Test using the executable in "for_testing" folder. For example test using "vis_stream_comp.exe timerange 5" (setting a parameter bypasses the parameter GUI that sometimes create problems).
 
